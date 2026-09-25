@@ -99,6 +99,7 @@ class EscalationRouter:
                         body=f"{activity} aprobado por verificación ({spec.model})",
                         data={"tier": tier, "evidence": verification.evidence},
                     )
+                    await self.board.checkpoint()
                     return RouterOutcome(True, output, tier, spec.provider, [])
 
                 handoff.add(AttemptRecord(tier, spec.model, output, verification.issues))
@@ -111,6 +112,7 @@ class EscalationRouter:
                     recipient=f"{agent}@{tier}",
                     data={"issues": verification.issues},
                 )
+                await self.board.checkpoint()
 
             if tier != tiers[-1]:
                 await self.board.post(
@@ -164,7 +166,8 @@ class EscalationRouter:
         try:
             res = await self.gateway.call(spec, request, tier=tier)
         except LLMError as exc:
-            return Verification(False, [f"[proveedor] {exc}"]), None, 0.0, (0, 0)
+            spent = (exc.tokens_in, exc.tokens_out)
+            return Verification(False, [f"[proveedor] {exc}"]), None, spec.cost(*spent), spent
         usage = (res.result.tokens_in, res.result.tokens_out)
         if res.result.refused:
             return (
@@ -175,7 +178,11 @@ class EscalationRouter:
             )
         if res.result.data is None:
             return Verification(False, ["[formato] respuesta sin JSON"]), None, res.cost_usd, usage
-        return await verifier.verify(res.result.data), res.result.data, res.cost_usd, usage
+        try:
+            verification = await verifier.verify(res.result.data)
+        except Exception as exc:
+            verification = Verification(False, [f"[verificador] {type(exc).__name__}: {exc}"])
+        return verification, res.result.data, res.cost_usd, usage
 
     async def _to_human(
         self, req_id: int, activity: str, agent: str, handoff: Handoff, reason: str

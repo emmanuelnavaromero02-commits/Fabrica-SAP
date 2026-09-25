@@ -83,6 +83,8 @@ async def answer(req_id: int, data: AnswerIn, who: Who, runner: RunnerDep) -> No
             )
     except LookupError as exc:
         raise HTTPException(404, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
     if unblocked:
         await runner.kick(req_id)
 

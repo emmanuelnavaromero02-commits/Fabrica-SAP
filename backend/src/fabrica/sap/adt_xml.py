@@ -129,6 +129,16 @@ def transport_request_xml(package: str, text: str, uri: str) -> str:
     )
 
 
+OPEN_TRANSPORT_STATUS = frozenset({"D", "L"})
+
+
+def transport_status(xml: str, number: str) -> str:
+    for element in parse(xml).iter():
+        if _attr(element, "number").upper() == number.upper():
+            return _attr(element, "status").upper()
+    return ""
+
+
 def lock_handle(xml: str) -> str:
     handle = _text_of(parse(xml), "LOCK_HANDLE")
     if not handle:

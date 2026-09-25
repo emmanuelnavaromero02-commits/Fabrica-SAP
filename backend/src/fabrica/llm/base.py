@@ -25,7 +25,11 @@ class LLMResult:
     refused: bool = False
 
 
-class LLMError(RuntimeError): ...
+class LLMError(RuntimeError):
+    def __init__(self, message: str, tokens_in: int = 0, tokens_out: int = 0) -> None:
+        super().__init__(message)
+        self.tokens_in = tokens_in
+        self.tokens_out = tokens_out
 
 
 class Provider(Protocol):

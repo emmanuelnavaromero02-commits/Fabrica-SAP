@@ -31,7 +31,8 @@ class RequirementWorkflow:
             finished = await workflow.execute_activity(
                 drive_activity,
                 req_id,
-                start_to_close_timeout=timedelta(hours=2),
+                start_to_close_timeout=timedelta(hours=8),
+                heartbeat_timeout=timedelta(minutes=2),
                 retry_policy=RetryPolicy(maximum_attempts=3),
             )
             if finished:

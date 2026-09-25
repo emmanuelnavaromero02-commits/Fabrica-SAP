@@ -23,6 +23,9 @@ class Board:
     def __init__(self, session: AsyncSession) -> None:
         self.s = session
 
+    async def checkpoint(self) -> None:
+        await self.s.commit()
+
     async def requirement(self, req_id: int) -> Requirement:
         req = await self.s.get(Requirement, req_id, options=[selectinload(Requirement.documents)])
         if req is None:
@@ -69,8 +72,14 @@ class Board:
 
     async def answer(self, req_id: int, message_id: int, author: str, body: str) -> Message:
         question = await self.s.get(Message, message_id)
-        if question is None or question.requirement_id != req_id:
+        if (
+            question is None
+            or question.requirement_id != req_id
+            or question.kind != MessageKind.PREGUNTA
+        ):
             raise LookupError("Pregunta no encontrada")
+        if question.resolved:
+            raise ValueError("La pregunta ya fue respondida")
         question.resolved = True
         return await self.post(
             req_id,
@@ -119,7 +128,15 @@ class Board:
         await self.s.flush()
 
     async def transport(self, req_id: int, system: str) -> Transport | None:
-        q = select(Transport).where(Transport.requirement_id == req_id, Transport.system == system)
+        q = (
+            select(Transport)
+            .where(
+                Transport.requirement_id == req_id,
+                Transport.system == system,
+                Transport.status == "modificable",
+            )
+            .order_by(Transport.id.desc())
+        )
         return (await self.s.scalars(q)).first()
 
     async def add_transport(self, req_id: int, system: str, number: str) -> Transport:

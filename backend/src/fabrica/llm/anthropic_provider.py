@@ -57,7 +57,11 @@ class AnthropicProvider:
             raise LLMError("Sin conexión con Anthropic") from exc
 
         usage = message.usage
-        tokens_in = usage.input_tokens + (usage.cache_read_input_tokens or 0)
+        tokens_in = (
+            usage.input_tokens
+            + (usage.cache_read_input_tokens or 0)
+            + (usage.cache_creation_input_tokens or 0)
+        )
         if message.stop_reason == "refusal":
             return LLMResult("", None, tokens_in, usage.output_tokens, refused=True)
 
@@ -67,5 +71,9 @@ class AnthropicProvider:
             try:
                 data = json.loads(text)
             except json.JSONDecodeError as exc:
-                raise LLMError("Claude devolvió JSON inválido") from exc
+                raise LLMError(
+                    f"Claude devolvió JSON inválido (stop_reason={message.stop_reason})",
+                    tokens_in,
+                    usage.output_tokens,
+                ) from exc
         return LLMResult(text, data, tokens_in, usage.output_tokens)

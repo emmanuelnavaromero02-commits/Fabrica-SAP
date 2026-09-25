@@ -12,7 +12,7 @@ from jwt.algorithms import RSAAlgorithm
 
 from fabrica import config
 from fabrica.api.app import create_app
-from fabrica.auth.oidc import OidcVerifier
+from fabrica.auth.oidc import AuthenticationError, OidcVerifier
 from fabrica.pipeline.runner import InlineRunner
 
 ISSUER = "http://kc.test/realms/fabrica"
@@ -106,3 +106,27 @@ async def test_mcp_token_verifier_requires_factory_roles() -> None:
     assert access is not None and access.subject == "u-1"
     assert await verifier.verify_token(token(realm_access={"roles": []})) is None
     assert await verifier.verify_token("basura") is None
+
+
+async def test_symmetric_or_unsigned_tokens_are_rejected(client: httpx.AsyncClient) -> None:
+    claims = {"iss": ISSUER, "aud": "fabrica-api", "sub": "u-1", "exp": int(time.time()) + 60}
+    hs = jwt.encode(claims, "x" * 32, algorithm="HS256", headers={"kid": "k1"})
+    unsigned = jwt.encode(claims, None, algorithm="none", headers={"kid": "k1"})
+    assert (await client.get("/api/me", headers=bearer(hs))).status_code == 401
+    assert (await client.get("/api/me", headers=bearer(unsigned))).status_code == 401
+
+
+async def test_unknown_key_ids_do_not_hammer_the_issuer() -> None:
+    fetches: list[str] = []
+
+    def counting(request: httpx.Request) -> httpx.Response:
+        fetches.append(request.url.path)
+        return _keycloak(request)
+
+    http = httpx.AsyncClient(transport=httpx.MockTransport(counting))
+    verifier = OidcVerifier(ISSUER, "fabrica-api", jwks_url=f"{ISSUER}/certs", http=http)
+    unknown = jwt.encode({"sub": "x"}, KEY, algorithm="RS256", headers={"kid": "otra"})
+    for _ in range(5):
+        with pytest.raises(AuthenticationError):
+            await verifier.claims(unknown)
+    assert len(fetches) == 2

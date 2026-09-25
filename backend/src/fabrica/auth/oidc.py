@@ -11,6 +11,8 @@ from fabrica.domain.schemas import Identity
 
 ROLE_PRIORITY = ("admin", "lider", "abap", "funcional", "usuario_clave", "consultor")
 KNOWN_ROLES = frozenset(ROLE_PRIORITY)
+SIGNING_ALGORITHMS = ("RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384")
+FORCED_REFRESH_INTERVAL = 30.0
 
 
 class AuthenticationError(Exception): ...
@@ -36,6 +38,7 @@ class OidcVerifier:
         self.cache_seconds = cache_seconds
         self._keys: PyJWKSet | None = None
         self._loaded_at = 0.0
+        self._forced_at = float("-inf")
 
     async def _discover_jwks_url(self) -> str:
         if self.jwks_url:
@@ -49,6 +52,10 @@ class OidcVerifier:
         fresh = time.monotonic() - self._loaded_at < self.cache_seconds
         if self._keys is not None and fresh and not force:
             return self._keys
+        if force and self._keys is not None:
+            if time.monotonic() - self._forced_at < FORCED_REFRESH_INTERVAL:
+                return self._keys
+            self._forced_at = time.monotonic()
         resp = await self.http.get(await self._discover_jwks_url())
         resp.raise_for_status()
         self._keys = PyJWKSet.from_dict(resp.json())
@@ -66,16 +73,18 @@ class OidcVerifier:
     async def claims(self, token: str) -> dict[str, Any]:
         try:
             header = jwt.get_unverified_header(token)
+            if header.get("alg") not in SIGNING_ALGORITHMS:
+                raise AuthenticationError("Algoritmo de firma no permitido")
             key = await self._key_for(str(header.get("kid", "")))
             decoded: dict[str, Any] = jwt.decode(
                 token,
                 key.key,
-                algorithms=[header.get("alg", "RS256")],
+                algorithms=[str(header["alg"])],
                 audience=self.audience,
                 issuer=self.issuer,
                 options={"require": ["exp", "iss", "sub"]},
             )
-        except jwt.PyJWTError as exc:
+        except (jwt.PyJWTError, TypeError, ValueError) as exc:
             raise AuthenticationError(f"Token inválido: {exc}") from exc
         except httpx.HTTPError as exc:
             raise AuthenticationError("No se pudo obtener las claves del emisor") from exc

@@ -52,6 +52,7 @@ class Requirement(Base):
     created_by: Mapped[str] = mapped_column(String(80))
     spent_usd: Mapped[float] = mapped_column(default=0.0)
     repo_url: Mapped[str | None] = mapped_column(String(300))
+    lease_until: Mapped[datetime | None] = mapped_column(default=None)
     created_at: Mapped[datetime] = mapped_column(default=now)
     updated_at: Mapped[datetime] = mapped_column(default=now, onupdate=now)
 

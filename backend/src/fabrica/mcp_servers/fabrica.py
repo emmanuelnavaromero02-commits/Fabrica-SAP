@@ -3,12 +3,16 @@ from __future__ import annotations
 from typing import Any
 
 from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 from sqlalchemy import select
 
 from fabrica.blackboard.service import Board
 from fabrica.catalog import StageKind, stage_machine
 from fabrica.db.models import MessageKind, Requirement, RunState
+from fabrica.domain.schemas import Identity
 from fabrica.mcp_servers.common import actor, auth_kwargs, mcp_session, serve
+from fabrica.pipeline import commands
+from fabrica.pipeline.runner import build_runner
 
 server = MCPServer(
     name="fabrica",
@@ -71,7 +75,7 @@ async def enviar_mensaje(
     requisito_id: int, hilo: str, tipo: str, texto: str, para: str | None = None
 ) -> dict[str, Any]:
     if tipo not in _ALLOWED_KINDS:
-        raise ValueError(f"Tipo no permitido: {tipo}. Usa uno de {sorted(_ALLOWED_KINDS)}")
+        raise ToolError(f"Tipo no permitido: {tipo}. Usa uno de {sorted(_ALLOWED_KINDS)}")
     async with mcp_session(requisito_id) as s:
         msg = await Board(s).post(
             requisito_id,
@@ -84,11 +88,21 @@ async def enviar_mensaje(
         return {"id": msg.id, "hilo": hilo, "tipo": tipo}
 
 
-@server.tool(description="Responde una pregunta abierta del tablero.")
+@server.tool(
+    description="Responde una pregunta abierta del tablero; si era la última, la fábrica reanuda."
+)
 async def responder_pregunta(requisito_id: int, pregunta_id: int, texto: str) -> dict[str, Any]:
-    async with mcp_session(requisito_id) as s:
-        msg = await Board(s).answer(requisito_id, pregunta_id, actor(), texto)
-        return {"id": msg.id}
+    who = Identity(user=actor(), role="consultor", roles=["consultor"])
+    try:
+        async with mcp_session(requisito_id) as s:
+            unblocked = await commands.answer_question(
+                Board(s), requisito_id, pregunta_id, texto, who
+            )
+    except (LookupError, ValueError) as exc:
+        raise ToolError(str(exc)) from exc
+    if unblocked:
+        await build_runner().kick(requisito_id)
+    return {"pregunta": pregunta_id, "reanudado": unblocked}
 
 
 def run() -> None:

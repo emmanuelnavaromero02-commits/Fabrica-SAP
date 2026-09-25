@@ -67,19 +67,21 @@ class CodexProvider:
             except TimeoutError as exc:
                 raise LLMError("Codex excedió el tiempo máximo") from exc
 
+            tokens_in, tokens_out = _usage_from_events(stdout.decode())
             if proc.returncode != 0:
                 raise LLMError(
-                    f"Codex terminó con código {proc.returncode}: {stderr.decode()[-500:]}"
+                    f"Codex terminó con código {proc.returncode}: {stderr.decode()[-500:]}",
+                    tokens_in,
+                    tokens_out,
                 )
 
             text = out.read_text(encoding="utf-8") if out.exists() else ""
-            tokens_in, tokens_out = _usage_from_events(stdout.decode())
             data = None
             if request.schema:
                 try:
                     data = json.loads(text)
                 except json.JSONDecodeError as exc:
-                    raise LLMError("Codex devolvió JSON inválido") from exc
+                    raise LLMError("Codex devolvió JSON inválido", tokens_in, tokens_out) from exc
             return LLMResult(text, data, tokens_in, tokens_out)
 
 

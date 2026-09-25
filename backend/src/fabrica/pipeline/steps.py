@@ -167,7 +167,9 @@ class Steps:
             f"{standards().render(req.capability)}"
         )
 
-        workspace = await WorkspaceManager().prepare(req.id, self.repos.clone_url(req.id))
+        workspace = await WorkspaceManager().prepare(
+            req.id, self.repos.clone_url(req.id), self.repos.git_auth_env()
+        )
         dev = await self.router.run(
             req.id,
             "implementar",

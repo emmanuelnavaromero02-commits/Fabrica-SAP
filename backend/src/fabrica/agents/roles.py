@@ -65,7 +65,13 @@ ARQUITECTO = AgentRole(
             "spec_markdown": _STR,
             "objects": {
                 "type": "array",
-                "items": _obj({"name": _STR, "type": _STR, "package": _STR}),
+                "items": _obj(
+                    {
+                        "name": _STR,
+                        "type": {"type": "string", "enum": ["PROG", "CLAS", "INTF"]},
+                        "package": _STR,
+                    }
+                ),
             },
             "assertions": {
                 "type": "array",

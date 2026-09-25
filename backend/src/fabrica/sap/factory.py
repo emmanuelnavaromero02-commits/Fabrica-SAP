@@ -27,6 +27,9 @@ class RequirementSap:
 
     async def transport_for(self, obj: SapObject) -> str:
         existing = await self.board.transport(self.req_id, self.bridge.system)
+        if existing is not None and not await self.bridge.transport_is_open(existing.number):
+            existing.status = "liberada"
+            existing = None
         text = f"Fabrica #{self.req_id} {self.title}"
         number = await self.bridge.ensure_transport(
             obj, text, existing.number if existing else None

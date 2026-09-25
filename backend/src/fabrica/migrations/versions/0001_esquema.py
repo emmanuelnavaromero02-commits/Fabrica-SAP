@@ -43,6 +43,7 @@ def upgrade() -> None:
         sa.Column("created_by", sa.String(length=80), nullable=False),
         sa.Column("spent_usd", sa.Double(), nullable=False),
         sa.Column("repo_url", sa.String(length=300), nullable=True),
+        sa.Column("lease_until", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id"),

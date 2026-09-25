@@ -22,6 +22,7 @@ class FakeSapSystem:
         self.system = system
         self.root = root / system
         self.root.mkdir(parents=True, exist_ok=True)
+        self.released: set[str] = set()
 
     def _path(self, name: str) -> Path:
         return self.root / f"{name.upper()}.json"
@@ -70,10 +71,14 @@ class FakeSapSystem:
         ]
         return CheckResult(findings)
 
+    async def transport_is_open(self, number: str) -> bool:
+        return number not in self.released
+
     async def ensure_transport(self, obj: SapObject, text: str, current: str | None) -> str:
         if current:
             return current
-        return f"DEVK9{zlib.crc32(f'{obj.package}:{text}'.encode()) % 100000:05d}"
+        seed = f"{obj.package}:{text}:{len(self.released)}"
+        return f"DEVK9{zlib.crc32(seed.encode()) % 100000:05d}"
 
     async def run_unit(self, name: str, assertions: list[Assertion]) -> CheckResult:
         return CheckResult(assertion_findings(await self._source(name), assertions))

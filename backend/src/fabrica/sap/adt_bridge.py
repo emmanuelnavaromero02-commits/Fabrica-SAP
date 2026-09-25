@@ -99,6 +99,15 @@ class AdtSap:
             raise AdtError("SAP no devolvió número de orden de transporte")
         return number
 
+    async def transport_is_open(self, number: str) -> bool:
+        resp = await self._client().get(
+            f"/sap/bc/adt/cts/transportrequests/{number}", headers={"Accept": ADT_XML}
+        )
+        if resp.status_code != 200:
+            return True
+        status = adt_xml.transport_status(resp.text, number)
+        return not status or status in adt_xml.OPEN_TRANSPORT_STATUS
+
     async def write_object(self, obj: SapObject, transport: str) -> None:
         uri = adt_xml.object_uri(obj.type, obj.name)
         exists = (await self._client().get(uri)).status_code == 200
