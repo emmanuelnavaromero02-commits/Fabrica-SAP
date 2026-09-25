@@ -93,12 +93,22 @@ class ArtifactOut(ORM):
     created_at: datetime
 
 
+class TransportOut(ORM):
+    id: int
+    system: str
+    number: str
+    objects: list[str]
+    status: str
+    created_at: datetime
+
+
 class RequirementDetail(BaseModel):
     requirement: RequirementOut
     messages: list[MessageOut]
     attempts: list[AttemptOut]
     decisions: list[DecisionOut]
     artifacts: list[ArtifactOut]
+    transports: list[TransportOut] = Field(default_factory=list)
 
 
 class StageOut(BaseModel):

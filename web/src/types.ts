@@ -78,12 +78,22 @@ export interface Artifact {
   created_at: string;
 }
 
+export interface Transport {
+  id: number;
+  system: string;
+  number: string;
+  objects: string[];
+  status: string;
+  created_at: string;
+}
+
 export interface RequirementDetail {
   requirement: Requirement;
   messages: Message[];
   attempts: Attempt[];
   decisions: Decision[];
   artifacts: Artifact[];
+  transports: Transport[];
 }
 
 export interface Stage {

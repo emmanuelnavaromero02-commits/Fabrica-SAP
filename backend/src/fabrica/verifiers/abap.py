@@ -3,23 +3,24 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from fabrica.sap.bridge import Assertion, CheckResult, GuardedBridge, PolicyViolation, SapObject
+from fabrica.sap.adt_bridge import AdtError
+from fabrica.sap.bridge import Assertion, CheckResult, PolicyViolation, SapObject
+from fabrica.sap.factory import RequirementSap
 from fabrica.verifiers.base import Verification
 
 
 class AbapVerifier:
     def __init__(
         self,
-        bridge: GuardedBridge,
+        sap: RequirementSap,
         *,
         main_object: dict[str, str],
         assertions: list[Assertion],
-        transport: str,
     ) -> None:
-        self.bridge = bridge
+        self.sap = sap
+        self.bridge = sap.bridge
         self.main = main_object
         self.assertions = assertions
-        self.transport = transport
 
     async def verify(self, output: dict[str, Any]) -> Verification:
         files = output.get("files") or []
@@ -35,9 +36,11 @@ class AbapVerifier:
             source=source,
         )
         try:
-            await self.bridge.write_object(obj, self.transport)
+            transport = await self.sap.write(obj)
         except PolicyViolation as exc:
             return Verification(False, [f"[politica] {exc}"])
+        except AdtError as exc:
+            return Verification(False, [f"[sap] {exc}"])
 
         issues: list[str] = []
         stages: dict[str, str] = {}
@@ -48,9 +51,14 @@ class AbapVerifier:
             ("pruebas", lambda: self.bridge.run_unit(name, self.assertions)),
         )
         for label, check in checks:
-            result = await check()
+            try:
+                result = await check()
+            except AdtError as exc:
+                return Verification(False, [*issues, f"[sap/{label}] {exc}"], {"stages": stages})
             stages[label] = "ok" if result.ok else "falla"
             issues += [f.as_text() for f in result.findings if f.severity == "error"]
             if label == "sintaxis" and not result.ok:
                 break
-        return Verification.from_issues(issues, stages=stages, system=self.bridge.system)
+        return Verification.from_issues(
+            issues, stages=stages, system=self.bridge.system, transport=transport
+        )

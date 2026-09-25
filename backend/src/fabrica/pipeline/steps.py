@@ -13,7 +13,7 @@ from fabrica.git.repo import RepoStore
 from fabrica.llm.base import LLMRequest
 from fabrica.llm.gateway import ModelGateway
 from fabrica.sap.bridge import Assertion
-from fabrica.sap.factory import bridge_for
+from fabrica.sap.factory import sap_for
 from fabrica.verifiers.abap import AbapVerifier
 from fabrica.verifiers.base import Verification
 from fabrica.verifiers.spec import SpecVerifier
@@ -145,10 +145,9 @@ class Steps:
         main = spec["objects"][0]
         assertions = [Assertion(**a) for a in spec["assertions"]]
         verifier = AbapVerifier(
-            bridge_for(self.board, req.id, roles.DESARROLLADOR.name),
+            await sap_for(self.board, req.id, roles.DESARROLLADOR.name),
             main_object=main,
             assertions=assertions,
-            transport=f"FABK9{req.id:05d}",
         )
         prompt = (
             f"{await _context(self.board, req)}\n\n## Spec\n{spec['spec_markdown']}\n\n"

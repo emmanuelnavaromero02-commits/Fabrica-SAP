@@ -42,10 +42,16 @@ async def test_atc_flags_select_star(tmp_path: Path) -> None:
 async def test_mcp_blocks_and_audits_forbidden_write() -> None:
     from sqlalchemy import select
 
+    from fabrica.blackboard.service import Board
     from fabrica.db.models import SapCall
     from fabrica.db.session import session_scope
+    from fabrica.domain.schemas import Identity, RequirementIn
     from fabrica.mcp_servers.sap import server
+    from fabrica.pipeline.commands import create_requirement
 
+    async with session_scope() as s:
+        data = RequirementIn(title="Reporte", description="Reporte de prueba de política.")
+        await create_requirement(Board(s), data, Identity(user="ana", role="funcional"))
     args = {
         "requisito_id": 1,
         "nombre": "RFBILA00",
@@ -58,4 +64,4 @@ async def test_mcp_blocks_and_audits_forbidden_write() -> None:
     assert result.structured_content["ok"] is False
     async with session_scope() as s:
         audit = (await s.scalars(select(SapCall))).all()
-    assert [(a.tool, a.ok) for a in audit] == [("write_object", False)]
+    assert [(a.tool, a.ok) for a in audit] == [("create_transport", False)]

@@ -138,3 +138,15 @@ class SapCall(Base):
     ok: Mapped[bool] = mapped_column(default=True)
     detail: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(default=now)
+
+
+class Transport(Base):
+    __tablename__ = "transports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    requirement_id: Mapped[int] = mapped_column(ForeignKey("requirements.id"), index=True)
+    system: Mapped[str] = mapped_column(String(40))
+    number: Mapped[str] = mapped_column(String(20))
+    objects: Mapped[list[Any]] = mapped_column(default=list)
+    status: Mapped[str] = mapped_column(String(20), default="modificable")
+    created_at: Mapped[datetime] = mapped_column(default=now)

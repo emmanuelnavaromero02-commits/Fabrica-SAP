@@ -129,3 +129,4 @@ code { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.9em;
 .center { text-align: center; margin-top: 20vh; }
 .login { display: grid; gap: 16px; justify-items: center; margin-top: 20vh; }
 .user { align-self: center; font-weight: 600; white-space: nowrap; }
+.transport { margin: 4px 0; }

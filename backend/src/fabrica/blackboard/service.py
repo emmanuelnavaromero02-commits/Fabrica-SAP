@@ -14,6 +14,7 @@ from fabrica.db.models import (
     MessageKind,
     Requirement,
     SapCall,
+    Transport,
 )
 
 
@@ -115,3 +116,17 @@ class Board:
     async def audit_sap(self, call: SapCall) -> None:
         self.s.add(call)
         await self.s.flush()
+
+    async def transport(self, req_id: int, system: str) -> Transport | None:
+        q = select(Transport).where(Transport.requirement_id == req_id, Transport.system == system)
+        return (await self.s.scalars(q)).first()
+
+    async def add_transport(self, req_id: int, system: str, number: str) -> Transport:
+        transport = Transport(requirement_id=req_id, system=system, number=number, objects=[])
+        self.s.add(transport)
+        await self.s.flush()
+        return transport
+
+    async def transports(self, req_id: int) -> list[Transport]:
+        q = select(Transport).where(Transport.requirement_id == req_id).order_by(Transport.id)
+        return list((await self.s.scalars(q)).all())

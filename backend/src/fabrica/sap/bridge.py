@@ -46,6 +46,7 @@ class SapBridge(Protocol):
 
     async def read_object(self, name: str) -> SapObject | None: ...
     async def write_object(self, obj: SapObject, transport: str) -> None: ...
+    async def ensure_transport(self, obj: SapObject, text: str, current: str | None) -> str: ...
     async def syntax_check(self, name: str) -> CheckResult: ...
     async def activate(self, name: str) -> CheckResult: ...
     async def run_atc(self, name: str) -> CheckResult: ...
@@ -53,6 +54,15 @@ class SapBridge(Protocol):
 
 
 class PolicyViolation(PermissionError): ...
+
+
+def assertion_findings(source: str, assertions: list[Assertion]) -> list[Finding]:
+    lowered = source.lower()
+    return [
+        Finding("unit", "error", f"{a.id} no se cumple: {a.description}")
+        for a in assertions
+        if a.must_contain.lower() not in lowered
+    ]
 
 
 AuditFn = Callable[[str, str, bool, str], Awaitable[None]]
@@ -86,6 +96,17 @@ class GuardedBridge:
             raise
         await self.inner.write_object(obj, transport)
         await self.audit("write_object", obj.name, True, f"transporte {transport}")
+
+    async def ensure_transport(self, obj: SapObject, text: str, current: str | None) -> str:
+        try:
+            self._check_write(obj)
+        except PolicyViolation as exc:
+            await self.audit("create_transport", obj.name, False, str(exc))
+            raise
+        number = await self.inner.ensure_transport(obj, text, current)
+        if number != current:
+            await self.audit("create_transport", obj.name, True, number)
+        return number
 
     async def _run(self, tool: str, name: str, result: CheckResult) -> CheckResult:
         detail = "; ".join(f.as_text() for f in result.findings)

@@ -17,6 +17,7 @@ from fabrica.domain.schemas import (
     RequirementDetail,
     RequirementIn,
     RequirementOut,
+    TransportOut,
 )
 from fabrica.domain.stages import TransitionError
 from fabrica.pipeline import commands
@@ -53,6 +54,7 @@ async def detail(req_id: int, who: Who) -> RequirementDetail:
             attempts=[AttemptOut.model_validate(a) for a in await board.attempts(req_id)],
             decisions=[DecisionOut.model_validate(d) for d in await board.decisions(req_id)],
             artifacts=[ArtifactOut.model_validate(a) for a in await board.artifacts(req_id)],
+            transports=[TransportOut.model_validate(t) for t in await board.transports(req_id)],
         )
 
 

@@ -88,6 +88,11 @@ export function RequirementView({ session, id, stages, onChanged }: Props) {
       {tab === "git" && (
         <div>
           <p className="muted">Repositorio: {req.repo_url ?? "aún no creado"}</p>
+          {data.transports.map((t) => (
+            <p key={t.id} className="transport">
+              🚚 Orden <code>{t.number}</code> en {t.system} · {t.status} · {t.objects.join(", ")}
+            </p>
+          ))}
           <ul className="artifacts">
             {data.artifacts.map((a) => (
               <li key={a.id}>

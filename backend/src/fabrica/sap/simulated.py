@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 import re
+import zlib
 from dataclasses import asdict
 from pathlib import Path
 
-from fabrica.sap.bridge import Assertion, CheckResult, Finding, SapObject
+from fabrica.sap.bridge import Assertion, CheckResult, Finding, SapObject, assertion_findings
 
 _HEADERS = ("REPORT", "PROGRAM", "CLASS", "INTERFACE", "FUNCTION-POOL")
 _ATC_RULES: list[tuple[str, str, str]] = [
@@ -69,12 +70,10 @@ class SimulatedSap:
         ]
         return CheckResult(findings)
 
+    async def ensure_transport(self, obj: SapObject, text: str, current: str | None) -> str:
+        if current:
+            return current
+        return f"SIMK9{zlib.crc32(f'{obj.package}:{text}'.encode()) % 100000:05d}"
+
     async def run_unit(self, name: str, assertions: list[Assertion]) -> CheckResult:
-        source = (await self._source(name)).lower()
-        return CheckResult(
-            [
-                Finding("unit", "error", f"{a.id} no se cumple: {a.description}")
-                for a in assertions
-                if a.must_contain.lower() not in source
-            ]
-        )
+        return CheckResult(assertion_findings(await self._source(name), assertions))
