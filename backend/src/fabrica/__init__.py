@@ -1,0 +1,1 @@
+"""Fábrica SAP — beta mínima."""

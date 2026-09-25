@@ -1,0 +1,49 @@
+"""Aplicación FastAPI: `fabrica-api` o `uvicorn fabrica.api.app:app`."""
+
+from __future__ import annotations
+
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
+import uvicorn
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from fabrica.api import meta, requirements
+from fabrica.config import get_settings
+from fabrica.db.session import init_db
+from fabrica.pipeline.runner import build_runner
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    await init_db()
+    app.state.runner = build_runner()
+    yield
+
+
+def create_app() -> FastAPI:
+    app = FastAPI(title="Fábrica SAP", version="0.1.0-beta", lifespan=lifespan)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(get_settings().cors_origins),
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    app.include_router(requirements.router)
+    app.include_router(meta.router)
+
+    @app.get("/health", tags=["sistema"])
+    async def health() -> dict[str, str]:
+        return {"status": "ok"}
+
+    return app
+
+
+app = create_app()
+
+
+def run() -> None:
+    logging.basicConfig(level=logging.INFO)
+    uvicorn.run("fabrica.api.app:app", host="0.0.0.0", port=8000)

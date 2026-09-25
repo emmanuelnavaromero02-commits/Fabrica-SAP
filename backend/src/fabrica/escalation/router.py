@@ -1,0 +1,162 @@
+"""Router con escalamiento: empieza en el nivel más barato viable y sube cuando falla.
+
+Cada intento pasa por un verificador automático. Si falla, el siguiente intento
+(del mismo nivel o del superior) recibe el paquete de relevo con los errores.
+Si se agotan los niveles o el presupuesto, se escala a una persona.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, replace
+from typing import Any
+
+from fabrica.blackboard.service import Board
+from fabrica.catalog import ModelCatalog, ModelSpec, model_catalog
+from fabrica.db.models import Attempt, MessageKind
+from fabrica.escalation.handoff import AttemptRecord, Handoff
+from fabrica.llm.base import LLMError, LLMRequest
+from fabrica.llm.gateway import ModelGateway
+from fabrica.verifiers.base import Verification, Verifier
+
+
+@dataclass
+class RouterOutcome:
+    passed: bool
+    output: dict[str, Any] | None
+    tier: str | None
+    provider: str | None
+    issues: list[str]
+    reason: str = ""
+
+
+class EscalationRouter:
+    def __init__(
+        self, gateway: ModelGateway, board: Board, catalog: ModelCatalog | None = None
+    ) -> None:
+        self.gateway = gateway
+        self.board = board
+        self.catalog = catalog or model_catalog()
+
+    def _pick(self, tier: str, attempt: int, avoid: str | None) -> ModelSpec:
+        models = self.catalog.tiers[tier].models
+        if avoid:  # revisión cruzada: nunca el mismo proveedor que escribió
+            others = [m for m in models if m.provider != avoid]
+            models = others or models
+        return models[attempt % len(models)]
+
+    async def _over_budget(self, req_id: int) -> bool:
+        req = await self.board.requirement(req_id)
+        return req.spent_usd >= self.catalog.budget_usd_per_requirement
+
+    async def run(
+        self,
+        req_id: int,
+        activity: str,
+        request: LLMRequest,
+        verifier: Verifier,
+        *,
+        agent: str,
+        avoid_provider: str | None = None,
+    ) -> RouterOutcome:
+        policy = self.catalog.policy(activity)
+        handoff = Handoff(activity)
+        base_prompt = request.prompt
+
+        for tier in policy.tiers():
+            for n in range(policy.attempts):
+                if await self._over_budget(req_id):
+                    return await self._to_human(
+                        req_id, activity, agent, handoff, "presupuesto agotado"
+                    )
+
+                spec = self._pick(tier, n, avoid_provider if policy.cross_vendor else None)
+                attempt_req = replace(
+                    request,
+                    prompt=base_prompt + handoff.render(),
+                    tags={**request.tags, "activity": activity},
+                )
+                verification, output, cost, usage = await self._attempt(
+                    spec, tier, attempt_req, verifier
+                )
+
+                await self.board.record_attempt(
+                    Attempt(
+                        requirement_id=req_id,
+                        activity=activity,
+                        tier=tier,
+                        provider=spec.provider,
+                        model=spec.model,
+                        tokens_in=usage[0],
+                        tokens_out=usage[1],
+                        cost_usd=cost,
+                        passed=verification.passed,
+                        issues=verification.issues,
+                    )
+                )
+                if verification.passed:
+                    await self.board.post(
+                        req_id,
+                        thread=activity,
+                        sender=f"{agent}@{tier}",
+                        kind=MessageKind.PROPUESTA,
+                        body=f"{activity} aprobado por verificación ({spec.model})",
+                        data={"tier": tier, "evidence": verification.evidence},
+                    )
+                    return RouterOutcome(True, output, tier, spec.provider, [])
+
+                handoff.add(AttemptRecord(tier, spec.model, output, verification.issues))
+                await self.board.post(
+                    req_id,
+                    thread=activity,
+                    sender="verificador",
+                    kind=MessageKind.OBJECION,
+                    body=f"{spec.model} ({tier}) no pasó: {len(verification.issues)} problema(s)",
+                    recipient=f"{agent}@{tier}",
+                    data={"issues": verification.issues},
+                )
+
+            if tier != policy.tiers()[-1]:
+                await self.board.post(
+                    req_id,
+                    thread=activity,
+                    sender="router",
+                    kind=MessageKind.ESCALAMIENTO,
+                    body=f"Escalando {activity} desde {tier} al siguiente nivel",
+                )
+
+        return await self._to_human(req_id, activity, agent, handoff, "niveles agotados")
+
+    async def _attempt(
+        self, spec: ModelSpec, tier: str, request: LLMRequest, verifier: Verifier
+    ) -> tuple[Verification, dict[str, Any] | None, float, tuple[int, int]]:
+        try:
+            res = await self.gateway.call(spec, request, tier=tier)
+        except LLMError as exc:
+            return Verification(False, [f"[proveedor] {exc}"]), None, 0.0, (0, 0)
+        usage = (res.result.tokens_in, res.result.tokens_out)
+        if res.result.refused:
+            return (
+                Verification(False, ["[proveedor] el modelo rechazó la tarea"]),
+                None,
+                res.cost_usd,
+                usage,
+            )
+        if res.result.data is None:
+            return Verification(False, ["[formato] respuesta sin JSON"]), None, res.cost_usd, usage
+        return await verifier.verify(res.result.data), res.result.data, res.cost_usd, usage
+
+    async def _to_human(
+        self, req_id: int, activity: str, agent: str, handoff: Handoff, reason: str
+    ) -> RouterOutcome:
+        last = handoff.last
+        issues = last.issues if last else []
+        await self.board.post(
+            req_id,
+            thread=activity,
+            sender="router",
+            kind=MessageKind.ESCALAMIENTO,
+            recipient="persona",
+            body=f"{activity}: requiere intervención humana ({reason})",
+            data={"issues": issues, "intentos": len(handoff.history)},
+        )
+        return RouterOutcome(False, last.output if last else None, None, None, issues, reason)

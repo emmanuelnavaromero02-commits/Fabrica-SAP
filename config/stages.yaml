@@ -1,0 +1,45 @@
+# Máquina de etapas: única fuente de verdad para API, flujo, UI y reportes.
+# kind: auto  → la ejecutan agentes
+#       gate  → espera la decisión de una persona con uno de los roles indicados
+#       final → terminal
+
+stages:
+  - key: recepcion
+    label: Recepción
+    kind: auto
+    next: diseno
+  - key: diseno
+    label: Diseño
+    kind: auto
+    next: aprobacion_cliente
+  - key: aprobacion_cliente
+    label: Aprobación del cliente
+    kind: gate
+    roles: [funcional, usuario_clave]
+    next: construccion
+    on_reject: diseno
+  - key: construccion
+    label: Construcción
+    kind: auto
+    next: revision_abap
+  - key: revision_abap
+    label: Revisión ABAP
+    kind: gate
+    roles: [abap]
+    next: uat
+    on_reject: construccion
+  - key: uat
+    label: Pruebas de usuario
+    kind: gate
+    roles: [usuario_clave]
+    next: cerrado
+    on_reject: construccion
+  - key: cerrado
+    label: Cerrado
+    kind: final
+  - key: desestimado
+    label: Desestimado
+    kind: final
+
+# Quién puede desestimar un requisito en cualquier etapa no final.
+discard_roles: [admin, lider]

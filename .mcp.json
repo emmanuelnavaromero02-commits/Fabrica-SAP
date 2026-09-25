@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "fabrica": {
+      "command": "uv",
+      "args": ["run", "--project", "backend", "fabrica-mcp-fabrica"],
+      "env": { "FABRICA_MCP_USER": "consultor" }
+    },
+    "sap": {
+      "command": "uv",
+      "args": ["run", "--project", "backend", "fabrica-mcp-sap"],
+      "env": { "FABRICA_MCP_USER": "consultor" }
+    }
+  }
+}

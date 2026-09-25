@@ -1,0 +1,79 @@
+# Entorno completo de desarrollo:  docker compose up --build
+#   Web            http://localhost:5173
+#   API (Swagger)  http://localhost:8000/docs
+#   Temporal UI    http://localhost:8233
+#   Gitea          http://localhost:3000   (perfil opcional: --profile gitea)
+
+x-backend: &backend
+  build: { context: ., dockerfile: backend/Dockerfile }
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    FABRICA_DATABASE_URL: postgresql+asyncpg://fabrica:fabrica@postgres:5432/fabrica
+    FABRICA_RUNNER: temporal
+    FABRICA_TEMPORAL_HOST: temporal:7233
+  volumes:
+    - fabrica-data:/data
+  depends_on:
+    postgres: { condition: service_healthy }
+    temporal: { condition: service_started }
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: fabrica
+      POSTGRES_PASSWORD: fabrica
+      POSTGRES_DB: fabrica
+    volumes: [pg-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fabrica"]
+      interval: 3s
+      retries: 20
+    ports: ["5432:5432"]
+
+  temporal:
+    # Servidor de desarrollo de Temporal (incluye la UI). En producción: clúster con permisos.
+    image: temporalio/temporal:latest
+    command: ["server", "start-dev", "--ip", "0.0.0.0", "--db-filename", "/data/temporal.db"]
+    volumes: [temporal-data:/data]
+    ports: ["7233:7233", "8233:8233"]
+
+  api:
+    <<: *backend
+    command: ["fabrica-api"]
+    ports: ["8000:8000"]
+
+  worker:
+    <<: *backend
+    command: ["fabrica-worker"]
+
+  web:
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm install --no-audit --no-fund && npx vite --host 0.0.0.0 --port 5173"
+    environment:
+      FABRICA_API: http://api:8000
+    volumes:
+      - ./web:/app
+      - web-node-modules:/app/node_modules
+    ports: ["5173:5173"]
+    depends_on: [api]
+
+  gitea:
+    profiles: ["gitea"]
+    image: gitea/gitea:1.26
+    environment:
+      GITEA__security__INSTALL_LOCK: "true"
+      GITEA__database__DB_TYPE: sqlite3
+      GITEA__server__ROOT_URL: http://localhost:3000/
+    volumes: [gitea-data:/data]
+    ports: ["3000:3000"]
+
+volumes:
+  pg-data:
+  temporal-data:
+  fabrica-data:
+  gitea-data:
+  web-node-modules:
