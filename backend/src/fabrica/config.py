@@ -35,6 +35,7 @@ class Settings(BaseSettings):
 
     sap_allowed_packages: tuple[str, ...] = ("Z", "Y")
     sap_mode: Literal["adt", "mock"] = "mock"
+    llm_mode: Literal["real", "mock"] = "mock"
 
     cors_origins: tuple[str, ...] = ("http://localhost:5173",)
 

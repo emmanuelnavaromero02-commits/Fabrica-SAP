@@ -29,6 +29,12 @@ class ModelGateway:
 
 
 def build_provider(name: str) -> Provider:
+    from fabrica.config import get_settings
+
+    if get_settings().llm_mode == "mock":
+        from fabrica.llm.simulated import SimulatedProvider
+
+        return SimulatedProvider()
     if name == "anthropic":
         from fabrica.llm.anthropic_provider import AnthropicProvider
 
