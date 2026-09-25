@@ -21,6 +21,7 @@ from fabrica.domain.schemas import (
     TransportOut,
 )
 from fabrica.domain.stages import TransitionError
+from fabrica.notify.notifier import announce
 from fabrica.pipeline import commands
 
 router = APIRouter(prefix="/api/requirements", tags=["requisitos"])
@@ -85,6 +86,8 @@ async def decision(req_id: int, data: DecisionIn, who: Who, runner: RunnerDep) -
         raise HTTPException(409, str(exc)) from exc
     if has_work:
         await runner.kick(req_id)
+    else:
+        await announce(req_id)
 
 
 @router.post("/{req_id}/resume", status_code=204)

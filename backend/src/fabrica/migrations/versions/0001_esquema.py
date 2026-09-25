@@ -66,6 +66,23 @@ def upgrade() -> None:
         )
 
     op.create_table(
+        "work_sessions",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("user", sa.String(length=80), nullable=False),
+        sa.Column("requirement_id", sa.Integer(), nullable=True),
+        sa.Column("source", sa.String(length=20), nullable=False),
+        sa.Column("started_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("last_seen_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("seconds", sa.Integer(), nullable=False),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    with op.batch_alter_table("work_sessions", schema=None) as batch_op:
+        batch_op.create_index(
+            batch_op.f("ix_work_sessions_requirement_id"), ["requirement_id"], unique=False
+        )
+        batch_op.create_index(batch_op.f("ix_work_sessions_user"), ["user"], unique=False)
+
+    op.create_table(
         "artifacts",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("requirement_id", sa.Integer(), nullable=False),
@@ -244,6 +261,11 @@ def downgrade() -> None:
         batch_op.drop_index(batch_op.f("ix_artifacts_requirement_id"))
 
     op.drop_table("artifacts")
+    with op.batch_alter_table("work_sessions", schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f("ix_work_sessions_user"))
+        batch_op.drop_index(batch_op.f("ix_work_sessions_requirement_id"))
+
+    op.drop_table("work_sessions")
     with op.batch_alter_table("sap_calls", schema=None) as batch_op:
         batch_op.drop_index(batch_op.f("ix_sap_calls_requirement_id"))
 

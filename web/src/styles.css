@@ -135,3 +135,10 @@ code { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.9em;
 .estimate ul { margin: 6px 0; padding-left: 18px; }
 .docs { list-style: none; padding: 0; display: grid; gap: 6px; }
 .docs pre { white-space: pre-wrap; font-size: 0.85em; max-height: 320px; overflow: auto; background: var(--bg); padding: 8px; border-radius: 8px; }
+.views { display: flex; gap: 4px; }
+.single { padding: 20px; max-width: 1100px; }
+.report h3 { margin-top: 20px; }
+.summary { border-collapse: collapse; min-width: 360px; }
+.summary th, .summary td { text-align: left; padding: 4px 10px; border-bottom: 1px solid var(--line); }
+.summary th { font-weight: 500; color: var(--muted); }
+button.link { background: none; color: var(--accent); padding: 0; text-decoration: underline; }

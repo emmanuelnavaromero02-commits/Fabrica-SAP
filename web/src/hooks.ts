@@ -43,3 +43,29 @@ export function useStored<T>(key: string, initial: T) {
   };
   return [value, update] as const;
 }
+
+const ACTIVITY_EVENTS = ["pointerdown", "keydown", "scroll", "pointermove"] as const;
+const IDLE_MS = 5 * 60 * 1000;
+
+export function useActivityHeartbeat(send: () => Promise<void>, intervalMs = 60_000) {
+  const sendRef = useRef(send);
+  sendRef.current = send;
+
+  useEffect(() => {
+    let lastActivity = Date.now();
+    const markActive = () => {
+      lastActivity = Date.now();
+    };
+    for (const event of ACTIVITY_EVENTS) window.addEventListener(event, markActive, { passive: true });
+    const beat = () => {
+      const visible = document.visibilityState === "visible";
+      if (visible && Date.now() - lastActivity < IDLE_MS) void sendRef.current().catch(() => undefined);
+    };
+    beat();
+    const timer = setInterval(beat, intervalMs);
+    return () => {
+      clearInterval(timer);
+      for (const event of ACTIVITY_EVENTS) window.removeEventListener(event, markActive);
+    };
+  }, [intervalMs]);
+}

@@ -6,9 +6,8 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 
 from fabrica.blackboard.service import Board
-from fabrica.db.session import init_db, session_scope
 from fabrica.git.repo import repo_store
-from fabrica.mcp_servers.common import actor, auth_kwargs, serve
+from fabrica.mcp_servers.common import actor, auth_kwargs, mcp_session, serve
 from fabrica.pipeline.steps import SPEC_JSON
 from fabrica.sap.adt_bridge import AdtError
 from fabrica.sap.bridge import Assertion, CheckResult, PolicyViolation, SapObject
@@ -30,8 +29,7 @@ def _result(result: CheckResult) -> dict[str, Any]:
 
 @server.tool(description="Lee el código fuente de un objeto en DEV.")
 async def leer_objeto(requisito_id: int, nombre: str) -> dict[str, Any]:
-    await init_db()
-    async with session_scope() as s:
+    async with mcp_session(requisito_id) as s:
         sap = await sap_for(Board(s), requisito_id, actor())
         obj = await sap.bridge.read_object(nombre)
         return {"existe": obj is not None, "fuente": obj.source if obj else ""}
@@ -41,8 +39,7 @@ async def leer_objeto(requisito_id: int, nombre: str) -> dict[str, Any]:
 async def escribir_objeto(
     requisito_id: int, nombre: str, tipo: str, paquete: str, fuente: str
 ) -> dict[str, Any]:
-    await init_db()
-    async with session_scope() as s:
+    async with mcp_session(requisito_id) as s:
         sap = await sap_for(Board(s), requisito_id, actor())
         obj = SapObject(name=nombre, type=tipo, package=paquete, source=fuente)
         try:
@@ -54,24 +51,21 @@ async def escribir_objeto(
 
 @server.tool(description="Revisión de sintaxis del objeto en DEV.")
 async def revisar_sintaxis(requisito_id: int, nombre: str) -> dict[str, Any]:
-    await init_db()
-    async with session_scope() as s:
+    async with mcp_session(requisito_id) as s:
         sap = await sap_for(Board(s), requisito_id, actor())
         return _result(await sap.bridge.syntax_check(nombre))
 
 
 @server.tool(description="Activa el objeto en DEV.")
 async def activar(requisito_id: int, nombre: str) -> dict[str, Any]:
-    await init_db()
-    async with session_scope() as s:
+    async with mcp_session(requisito_id) as s:
         sap = await sap_for(Board(s), requisito_id, actor())
         return _result(await sap.bridge.activate(nombre))
 
 
 @server.tool(description="Corre ATC (Clean Core) sobre el objeto.")
 async def correr_atc(requisito_id: int, nombre: str) -> dict[str, Any]:
-    await init_db()
-    async with session_scope() as s:
+    async with mcp_session(requisito_id) as s:
         sap = await sap_for(Board(s), requisito_id, actor())
         return _result(await sap.bridge.run_atc(nombre))
 
@@ -82,16 +76,14 @@ async def correr_pruebas(requisito_id: int, nombre: str) -> dict[str, Any]:
     if raw is None:
         return {"ok": False, "hallazgos": ["El requisito aún no tiene spec"]}
     assertions = [Assertion(**a) for a in json.loads(raw)["assertions"]]
-    await init_db()
-    async with session_scope() as s:
+    async with mcp_session(requisito_id) as s:
         sap = await sap_for(Board(s), requisito_id, actor())
         return _result(await sap.bridge.run_unit(nombre, assertions))
 
 
 @server.tool(description="Orden de transporte del requisito y los objetos que contiene.")
 async def ver_transporte(requisito_id: int) -> list[dict[str, Any]]:
-    await init_db()
-    async with session_scope() as s:
+    async with mcp_session(requisito_id) as s:
         return [
             {"sistema": t.system, "orden": t.number, "objetos": t.objects, "estado": t.status}
             for t in await Board(s).transports(requisito_id)

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
 from mcp.server.auth.middleware.auth_context import get_access_token
@@ -8,9 +10,12 @@ from mcp.server.auth.provider import AccessToken
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver import MCPServer
 from pydantic import AnyHttpUrl
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from fabrica.auth.oidc import AuthenticationError, OidcVerifier, roles_from_claims
 from fabrica.config import get_settings
+from fabrica.db.session import init_db, session_scope
+from fabrica.tracking.time import heartbeat
 
 
 class McpTokenVerifier:
@@ -63,6 +68,14 @@ def actor() -> str:
         claims = token.claims
         return str(claims.get("preferred_username") or claims.get("email") or token.subject)
     return os.environ.get("FABRICA_MCP_USER", "consultor")
+
+
+@asynccontextmanager
+async def mcp_session(requirement_id: int | None = None) -> AsyncIterator[AsyncSession]:
+    await init_db()
+    async with session_scope() as session:
+        await heartbeat(session, user=actor(), requirement_id=requirement_id, source="mcp")
+        yield session
 
 
 def serve(server: MCPServer, default_port: int) -> None:

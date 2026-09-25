@@ -129,3 +129,32 @@ export interface NewRequirement {
   project: string;
   documents: { name: string; kind: string; content: string }[];
 }
+
+export interface TimeRow {
+  user: string;
+  requirement_id: number | null;
+  hours: number;
+  by_source: Record<string, number>;
+}
+
+export interface PortfolioItem {
+  id: number;
+  title: string;
+  stage: string;
+}
+
+export interface Portfolio {
+  total: number;
+  by_stage: Record<string, number>;
+  by_state: Record<string, number>;
+  blocked: PortfolioItem[];
+  waiting: PortfolioItem[];
+  lead_time_days: number | null;
+  first_pass_rate: Record<string, number>;
+  ai_cost_usd: number;
+  requirements: (PortfolioItem & {
+    estimated_hours: number | null;
+    worked_hours: number;
+    ai_cost_usd: number;
+  })[];
+}

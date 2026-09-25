@@ -8,8 +8,7 @@ from sqlalchemy import select
 from fabrica.blackboard.service import Board
 from fabrica.catalog import StageKind, stage_machine
 from fabrica.db.models import MessageKind, Requirement, RunState
-from fabrica.db.session import init_db, session_scope
-from fabrica.mcp_servers.common import actor, auth_kwargs, serve
+from fabrica.mcp_servers.common import actor, auth_kwargs, mcp_session, serve
 
 server = MCPServer(
     name="fabrica",
@@ -25,10 +24,9 @@ _ALLOWED_KINDS = {k.value for k in MessageKind} - {MessageKind.DECISION.value}
 
 @server.tool(description="Requisitos que esperan a un rol (compuertas) o están bloqueados.")
 async def mi_cola(rol: str) -> list[dict[str, Any]]:
-    await init_db()
     machine = stage_machine()
     gates = {s.key for s in machine.stages if s.kind is StageKind.GATE and rol in s.roles}
-    async with session_scope() as s:
+    async with mcp_session() as s:
         rows = await s.scalars(select(Requirement).where(Requirement.state != RunState.DONE))
         return [
             {"id": r.id, "titulo": r.title, "etapa": r.stage, "estado": r.state}
@@ -39,8 +37,7 @@ async def mi_cola(rol: str) -> list[dict[str, Any]]:
 
 @server.tool(description="Detalle de un requisito con sus documentos y conversación.")
 async def leer_requisito(requisito_id: int) -> dict[str, Any]:
-    await init_db()
-    async with session_scope() as s:
+    async with mcp_session(requisito_id) as s:
         board = Board(s)
         req = await board.requirement(requisito_id)
         return {
@@ -75,8 +72,7 @@ async def enviar_mensaje(
 ) -> dict[str, Any]:
     if tipo not in _ALLOWED_KINDS:
         raise ValueError(f"Tipo no permitido: {tipo}. Usa uno de {sorted(_ALLOWED_KINDS)}")
-    await init_db()
-    async with session_scope() as s:
+    async with mcp_session(requisito_id) as s:
         msg = await Board(s).post(
             requisito_id,
             thread=hilo,
@@ -90,8 +86,7 @@ async def enviar_mensaje(
 
 @server.tool(description="Responde una pregunta abierta del tablero.")
 async def responder_pregunta(requisito_id: int, pregunta_id: int, texto: str) -> dict[str, Any]:
-    await init_db()
-    async with session_scope() as s:
+    async with mcp_session(requisito_id) as s:
         msg = await Board(s).answer(requisito_id, pregunta_id, actor(), texto)
         return {"id": msg.id}
 

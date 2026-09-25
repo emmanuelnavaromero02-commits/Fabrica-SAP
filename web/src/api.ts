@@ -4,9 +4,11 @@ import type {
   Identity,
   NewRequirement,
   Outcome,
+  Portfolio,
   Requirement,
   RequirementDetail,
   Stage,
+  TimeRow,
 } from "./types";
 
 export class ApiError extends Error {
@@ -82,6 +84,10 @@ export const api = {
       method: "POST",
       body: formWith(files, {}),
     }),
+  heartbeat: (s: Session, requirementId: number | null) =>
+    request<void>(s, "/api/time/heartbeat", post({ requirement_id: requirementId })),
+  time: (s: Session) => request<TimeRow[]>(s, "/api/time"),
+  portfolio: (s: Session) => request<Portfolio>(s, "/api/portfolio"),
   resume: (s: Session, id: number) =>
     request<void>(s, `/api/requirements/${id}/resume`, { method: "POST" }),
 };

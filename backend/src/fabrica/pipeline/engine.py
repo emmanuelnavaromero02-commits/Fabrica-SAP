@@ -9,6 +9,7 @@ from fabrica.db.session import session_scope
 from fabrica.domain.stages import advance
 from fabrica.git.repo import RepoStore, repo_store
 from fabrica.llm.gateway import ModelGateway
+from fabrica.notify.notifier import announce
 from fabrica.pipeline.steps import StepResult, Steps
 
 log = logging.getLogger(__name__)
@@ -62,4 +63,5 @@ class Engine:
     async def drive(self, req_id: int) -> None:
         for _ in range(_MAX_STAGES_PER_RUN):
             if not await self.run_stage(req_id):
-                return
+                break
+        await announce(req_id)

@@ -11,6 +11,7 @@ export function NewRequirementForm({ onCreate }: Props) {
   const [description, setDescription] = useState("");
   const [spec, setSpec] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const [fileInputKey, setFileInputKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,6 +30,7 @@ export function NewRequirementForm({ onCreate }: Props) {
       setDescription("");
       setSpec("");
       setFiles([]);
+      setFileInputKey((k) => k + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -63,6 +65,7 @@ export function NewRequirementForm({ onCreate }: Props) {
       <label className="files">
         📎 Documentos (PDF, DOCX, TXT)
         <input
+          key={fileInputKey}
           type="file"
           multiple
           accept=".pdf,.docx,.txt,.md,.vtt,.srt,.csv"

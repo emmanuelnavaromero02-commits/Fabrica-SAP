@@ -39,6 +39,9 @@ class Settings(BaseSettings):
 
     cors_origins: tuple[str, ...] = ("http://localhost:5173",)
 
+    notify_webhook_url: str = ""
+    public_url: str = "http://localhost:5173"
+
     auth_mode: Literal["headers", "oidc"] = "headers"
     oidc_issuer: str = "http://localhost:8080/realms/fabrica"
     oidc_client_id: str = "fabrica-web"

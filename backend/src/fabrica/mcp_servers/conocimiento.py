@@ -4,10 +4,9 @@ from typing import Any
 
 from mcp.server.mcpserver import MCPServer
 
-from fabrica.db.session import init_db, session_scope
 from fabrica.knowledge.lessons import record_lessons, relevant_lessons, similar_requirements
 from fabrica.knowledge.standards import standards
-from fabrica.mcp_servers.common import actor, auth_kwargs, serve
+from fabrica.mcp_servers.common import actor, auth_kwargs, mcp_session, serve
 
 server = MCPServer(
     name="conocimiento",
@@ -29,8 +28,7 @@ async def estandares(modulo: str = "") -> list[str]:
     "ordenadas por relevancia respecto al texto dado."
 )
 async def buscar_lecciones(actividad: str, texto: str, limite: int = 5) -> list[dict[str, Any]]:
-    await init_db()
-    async with session_scope() as s:
+    async with mcp_session() as s:
         lessons = await relevant_lessons(s, actividad, texto, limit=limite)
         return [
             {
@@ -47,8 +45,7 @@ async def buscar_lecciones(actividad: str, texto: str, limite: int = 5) -> list[
 async def guardar_leccion(
     actividad: str, texto: str, requisito_id: int, modulo: str | None = None
 ) -> dict[str, Any]:
-    await init_db()
-    async with session_scope() as s:
+    async with mcp_session(requisito_id) as s:
         created = await record_lessons(
             s,
             activity=actividad,
@@ -64,8 +61,7 @@ async def guardar_leccion(
     description="Requisitos ya cerrados parecidos al texto, para reutilizar diseño y código."
 )
 async def requisitos_similares(texto: str, limite: int = 5) -> list[dict[str, Any]]:
-    await init_db()
-    async with session_scope() as s:
+    async with mcp_session() as s:
         found = await similar_requirements(s, texto, limit=limite)
         return [
             {"id": r.id, "titulo": r.title, "modulo": r.capability, "repo": r.repo_url}

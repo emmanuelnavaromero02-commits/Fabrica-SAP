@@ -178,3 +178,15 @@ class Estimate(Base):
     days: Mapped[float] = mapped_column(default=0.0)
     complexity: Mapped[str] = mapped_column(String(4))
     created_at: Mapped[datetime] = mapped_column(default=now)
+
+
+class WorkSession(Base):
+    __tablename__ = "work_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user: Mapped[str] = mapped_column(String(80), index=True)
+    requirement_id: Mapped[int | None] = mapped_column(index=True)
+    source: Mapped[str] = mapped_column(String(20))
+    started_at: Mapped[datetime] = mapped_column(default=now)
+    last_seen_at: Mapped[datetime] = mapped_column(default=now)
+    seconds: Mapped[int] = mapped_column(default=0)
