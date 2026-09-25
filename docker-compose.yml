@@ -38,6 +38,11 @@ services:
     volumes: [temporal-data:/data]
     ports: ["7233:7233", "8233:8233"]
 
+  agente-imagen:
+    profiles: ["agente"]
+    build: { context: ., dockerfile: backend/Dockerfile.agente }
+    image: fabrica-agente:latest
+
   keycloak:
     image: quay.io/keycloak/keycloak:26.4
     command: ["start-dev", "--import-realm", "--hostname", "http://localhost:8080"]

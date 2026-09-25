@@ -17,6 +17,7 @@ from fabrica.sap.factory import sap_for
 from fabrica.verifiers.abap import AbapVerifier
 from fabrica.verifiers.base import Verification
 from fabrica.verifiers.spec import SpecVerifier
+from fabrica.workspace.manager import WorkspaceManager
 
 SPEC_JSON = "diseno/spec.json"
 
@@ -155,10 +156,11 @@ class Steps:
             f"Aseveraciones: {json.dumps(spec['assertions'], ensure_ascii=False)}"
         )
 
+        workspace = await WorkspaceManager().prepare(req.id, self.repos.clone_url(req.id))
         dev = await self.router.run(
             req.id,
             "implementar",
-            _request(roles.DESARROLLADOR, prompt),
+            _request(roles.DESARROLLADOR, prompt, workdir=str(workspace)),
             verifier,
             agent=roles.DESARROLLADOR.name,
         )

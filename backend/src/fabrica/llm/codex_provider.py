@@ -8,6 +8,7 @@ from pathlib import Path
 from fabrica.catalog import ModelSpec
 from fabrica.config import get_settings
 from fabrica.llm.base import LLMError, LLMRequest, LLMResult
+from fabrica.workspace.sandbox import CONTAINER_IO, CONTAINER_WORK, Sandbox, configured_sandbox
 
 _TIMEOUT_S = 1800
 
@@ -15,29 +16,32 @@ _TIMEOUT_S = 1800
 class CodexProvider:
     name = "codex"
 
-    def __init__(self, binary: str | None = None) -> None:
+    def __init__(self, binary: str | None = None, sandbox: Sandbox | None = None) -> None:
         self.binary = binary or get_settings().codex_bin
+        self.sandbox = sandbox or configured_sandbox()
 
-    def _command(self, spec: ModelSpec, workdir: Path, out: Path, schema: Path | None) -> list[str]:
+    def command(self, spec: ModelSpec, workdir: Path, io: Path, with_schema: bool) -> list[str]:
+        work = self.sandbox.inside(workdir, CONTAINER_WORK)
+        io_dir = self.sandbox.inside(io, CONTAINER_IO)
         cmd = [
             self.binary,
             "exec",
             "--model",
             spec.model,
             "--cd",
-            str(workdir),
+            work,
             "--sandbox",
             "workspace-write",
             "--skip-git-repo-check",
             "--json",
             "--output-last-message",
-            str(out),
+            f"{io_dir}/last_message.txt",
         ]
         if spec.effort:
             cmd += ["-c", f"model_reasoning_effort={spec.effort}"]
-        if schema:
-            cmd += ["--output-schema", str(schema)]
-        return cmd
+        if with_schema:
+            cmd += ["--output-schema", f"{io_dir}/schema.json"]
+        return self.sandbox.wrap(cmd, workdir, io)
 
     async def complete(self, spec: ModelSpec, request: LLMRequest) -> LLMResult:
         with tempfile.TemporaryDirectory(prefix="codex-") as tmp:
@@ -52,7 +56,7 @@ class CodexProvider:
             prompt = f"{request.system}\n\n{request.prompt}"
             try:
                 proc = await asyncio.create_subprocess_exec(
-                    *self._command(spec, workdir, out, schema),
+                    *self.command(spec, workdir, tmp_path, schema is not None),
                     prompt,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,

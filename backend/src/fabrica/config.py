@@ -25,6 +25,9 @@ class Settings(BaseSettings):
 
     llm_mode: Literal["mock", "live"] = "mock"
     codex_bin: str = "codex"
+    sandbox: Literal["none", "docker"] = "none"
+    sandbox_image: str = "fabrica-agente:latest"
+    sandbox_network: str = "bridge"
 
     git_backend: Literal["local", "gitea"] = "local"
     gitea_url: str = "http://localhost:3000"

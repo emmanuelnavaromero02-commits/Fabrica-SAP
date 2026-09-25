@@ -18,6 +18,7 @@ class RepoStore(Protocol):
         self, req_id: int, files: dict[str, str], message: str, author: str
     ) -> str: ...
     async def read_file(self, req_id: int, path: str) -> str | None: ...
+    def clone_url(self, req_id: int) -> str: ...
 
 
 def repo_name(req_id: int) -> str:
@@ -85,6 +86,9 @@ class LocalRepoStore:
         await self._git(path, "commit", "-q", "-m", message, env_author=author)
         return await self._git(path, "rev-parse", "HEAD")
 
+    def clone_url(self, req_id: int) -> str:
+        return self.path(req_id).as_uri()
+
     async def read_file(self, req_id: int, path: str) -> str | None:
         target = self.path(req_id) / path
         return target.read_text(encoding="utf-8") if target.exists() else None
@@ -99,6 +103,7 @@ class GiteaRepoStore:
             timeout=30,
         )
         self.web = url.rstrip("/")
+        self.token = token
 
     async def ensure_repo(self, req_id: int, title: str) -> str:
         resp = await self.http.post(
@@ -144,6 +149,10 @@ class GiteaRepoStore:
         )
         resp.raise_for_status()
         return str(resp.json()["commit"]["sha"])
+
+    def clone_url(self, req_id: int) -> str:
+        scheme, host = self.web.split("://", 1)
+        return f"{scheme}://fabrica:{self.token}@{host}/{self.org}/{repo_name(req_id)}.git"
 
     async def read_file(self, req_id: int, path: str) -> str | None:
         resp = await self.http.get(f"/repos/{self.org}/{repo_name(req_id)}/raw/{path}")
