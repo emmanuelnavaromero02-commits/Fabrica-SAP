@@ -1,10 +1,3 @@
-"""Dependencias del API: identidad, sesión y runner.
-
-Beta: la identidad llega en cabeceras X-Fabrica-User / X-Fabrica-Role.
-Producción: reemplazar `identity` por la validación del token OIDC de Keycloak;
-el resto del código ya recibe una `Identity` y no cambia.
-"""
-
 from __future__ import annotations
 
 from typing import Annotated

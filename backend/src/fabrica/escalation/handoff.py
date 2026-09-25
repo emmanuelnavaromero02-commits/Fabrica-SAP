@@ -1,5 +1,3 @@
-"""Paquete de relevo: lo que un nivel superior recibe del intento fallido anterior."""
-
 from __future__ import annotations
 
 import json
@@ -28,7 +26,6 @@ class Handoff:
         return self.history[-1] if self.history else None
 
     def render(self) -> str:
-        """Texto que se agrega al prompt para que el modelo corrija en vez de empezar de cero."""
         if not self.history:
             return ""
         last = self.history[-1]

@@ -1,9 +1,3 @@
-"""Motor de etapas: encadena etapas automáticas hasta una compuerta, un bloqueo o el fin.
-
-Lo usan igual el modo inline (API en local) y las actividades de Temporal.
-Cada etapa corre en su propia transacción para que la UI vea el avance.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -28,7 +22,6 @@ class Engine:
         self.repos = repos or repo_store()
 
     async def run_stage(self, req_id: int) -> bool:
-        """Ejecuta la etapa automática actual. Devuelve True si debe seguir con la próxima."""
         async with session_scope() as session:
             board = Board(session)
             req = await board.requirement(req_id)
@@ -39,7 +32,7 @@ class Engine:
             handler = getattr(Steps(board, self.gateway, self.repos), req.stage)
             try:
                 result: StepResult = await handler(req)
-            except Exception as exc:  # un fallo inesperado nunca debe perder el requisito
+            except Exception as exc:
                 log.exception("Etapa %s del requisito %s falló", req.stage, req_id)
                 result = StepResult("blocked", f"Error interno: {exc}")
 
@@ -67,7 +60,6 @@ class Engine:
             return False
 
     async def drive(self, req_id: int) -> None:
-        """Avanza el requisito mientras haya trabajo automático."""
         for _ in range(_MAX_STAGES_PER_RUN):
             if not await self.run_stage(req_id):
                 return

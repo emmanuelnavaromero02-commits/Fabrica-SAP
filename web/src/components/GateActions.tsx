@@ -12,7 +12,6 @@ interface Props {
 
 const DISCARD_ROLES = ["admin", "lider"];
 
-/** Acciones humanas: solo se muestran si el rol actual puede tomarlas. */
 export function GateActions({ who, requirement, stage, onDecide, onResume }: Props) {
   const [comment, setComment] = useState("");
   const [error, setError] = useState<string | null>(null);

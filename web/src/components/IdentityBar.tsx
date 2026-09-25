@@ -13,7 +13,6 @@ interface Props {
   onChange: (who: Identity) => void;
 }
 
-/** Beta: elegir usuario y rol a mano para probar cada compuerta. En producción viene de Keycloak. */
 export function IdentityBar({ who, onChange }: Props) {
   return (
     <div className="identity">

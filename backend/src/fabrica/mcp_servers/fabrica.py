@@ -1,5 +1,3 @@
-"""MCP `fabrica`: el tablero para agentes y personas (Claude Code, Codex, VS Code)."""
-
 from __future__ import annotations
 
 from typing import Any

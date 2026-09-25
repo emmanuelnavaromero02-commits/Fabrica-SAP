@@ -1,5 +1,3 @@
-"""Rutas de catálogo y métricas: etapas, niveles de modelos y gasto."""
-
 from __future__ import annotations
 
 from typing import Any
@@ -41,7 +39,6 @@ async def tiers() -> dict[str, Any]:
 
 @router.get("/usage")
 async def usage(who: Who) -> list[dict[str, Any]]:
-    """Gasto y tasa de éxito por actividad, nivel y proveedor: base para calibrar el router."""
     async with session_scope() as s:
         rows = await s.execute(
             select(

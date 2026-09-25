@@ -1,5 +1,3 @@
-"""Operaciones sobre el tablero: mensajes tipados, decisiones, intentos y auditoría."""
-
 from __future__ import annotations
 
 from typing import Any
@@ -20,8 +18,6 @@ from fabrica.db.models import (
 
 
 class Board:
-    """Fachada del tablero para una sesión de base de datos."""
-
     def __init__(self, session: AsyncSession) -> None:
         self.s = session
 

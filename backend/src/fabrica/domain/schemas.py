@@ -1,5 +1,3 @@
-"""Contratos del API (entrada y salida). El frontend replica estos tipos en TypeScript."""
-
 from __future__ import annotations
 
 from datetime import datetime

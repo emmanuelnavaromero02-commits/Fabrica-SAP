@@ -1,10 +1,3 @@
-"""Router con escalamiento: empieza en el nivel más barato viable y sube cuando falla.
-
-Cada intento pasa por un verificador automático. Si falla, el siguiente intento
-(del mismo nivel o del superior) recibe el paquete de relevo con los errores.
-Si se agotan los niveles o el presupuesto, se escala a una persona.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
@@ -39,7 +32,7 @@ class EscalationRouter:
 
     def _pick(self, tier: str, attempt: int, avoid: str | None) -> ModelSpec:
         models = self.catalog.tiers[tier].models
-        if avoid:  # revisión cruzada: nunca el mismo proveedor que escribió
+        if avoid:
             others = [m for m in models if m.provider != avoid]
             models = others or models
         return models[attempt % len(models)]

@@ -1,5 +1,3 @@
-"""Proveedor OpenAI (Responses API) para tareas de razonamiento sin archivos."""
-
 from __future__ import annotations
 
 import json
@@ -15,7 +13,7 @@ class OpenAIProvider:
     name = "openai"
 
     def __init__(self, client: openai.AsyncOpenAI | None = None) -> None:
-        self.client = client or openai.AsyncOpenAI()  # OPENAI_API_KEY desde el entorno
+        self.client = client or openai.AsyncOpenAI()
 
     async def complete(self, spec: ModelSpec, request: LLMRequest) -> LLMResult:
         params: dict[str, Any] = {

@@ -1,4 +1,3 @@
-# Imagen única para API, worker y servidores MCP (cambia solo el comando).
 FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends git \

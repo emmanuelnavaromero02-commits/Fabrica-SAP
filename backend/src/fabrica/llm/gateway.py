@@ -1,9 +1,3 @@
-"""Gateway de modelos: único punto por el que la fábrica llama a cualquier IA.
-
-Resuelve el proveedor, etiqueta la petición, mide tokens y calcula el costo.
-En modo `mock` todas las llamadas van al proveedor simulado.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
@@ -38,7 +32,6 @@ class ModelGateway:
 
 
 def _build(name: str) -> Provider:
-    # Importes diferidos: cada SDK se carga solo si se usa.
     if name == "mock":
         from fabrica.llm.mock_provider import MockProvider
 

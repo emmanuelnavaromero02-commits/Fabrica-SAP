@@ -1,0 +1,61 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: fabrica
+          POSTGRES_PASSWORD: fabrica
+          POSTGRES_DB: fabrica
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U fabrica"
+          --health-interval 3s
+          --health-retries 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --extra dev --locked
+      - run: uv run ruff check src tests
+      - run: uv run ruff format --check src tests
+      - run: uv run mypy src
+      - run: uv run pytest -q
+      - run: uv run pytest -q
+        env:
+          FABRICA_TEST_DATABASE_URL: postgresql+asyncpg://fabrica:fabrica@localhost:5432/fabrica
+      - run: PGPASSWORD=fabrica psql -h localhost -U fabrica -c "CREATE DATABASE migraciones"
+      - run: uv run fabrica-migrate upgrade
+        env:
+          FABRICA_DATABASE_URL: postgresql+asyncpg://fabrica:fabrica@localhost:5432/migraciones
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run build

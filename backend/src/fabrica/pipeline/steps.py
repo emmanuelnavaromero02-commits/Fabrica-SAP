@@ -1,10 +1,3 @@
-"""Trabajo de los agentes en cada etapa automática.
-
-Cada función recibe el tablero de una transacción y devuelve qué pasó:
-- advance: la etapa terminó bien → pasa a la siguiente.
-- blocked: faltan respuestas del cliente o una persona debe intervenir.
-"""
-
 from __future__ import annotations
 
 import json
@@ -35,8 +28,6 @@ class StepResult:
 
 
 class _Check:
-    """Verificador a partir de una función simple sobre la salida."""
-
     def __init__(self, fn: Any) -> None:
         self.fn = fn
 
@@ -74,7 +65,6 @@ class Steps:
         for path in files:
             await self.board.record_artifact(req.id, path, commit, author)
 
-    # ── Recepción ──────────────────────────────────────────────────────────
     async def recepcion(self, req: Requirement) -> StepResult:
         req.repo_url = await self.repos.ensure_repo(req.id, req.title)
         context = await _context(self.board, req)
@@ -125,7 +115,6 @@ class Steps:
         await self._save(req, inputs, "Recepción: insumos y análisis", roles.ANALISTA.name)
         return StepResult("advance")
 
-    # ── Diseño ─────────────────────────────────────────────────────────────
     async def diseno(self, req: Requirement) -> StepResult:
         allowed = get_settings().sap_allowed_packages
         out = await self.router.run(
@@ -148,7 +137,6 @@ class Steps:
         )
         return StepResult("advance")
 
-    # ── Construcción ───────────────────────────────────────────────────────
     async def construccion(self, req: Requirement) -> StepResult:
         raw = await self.repos.read_file(req.id, SPEC_JSON)
         if raw is None:

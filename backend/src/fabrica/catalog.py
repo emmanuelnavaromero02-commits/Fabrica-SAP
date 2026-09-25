@@ -1,5 +1,3 @@
-"""Carga tipada de config/models.yaml y config/stages.yaml."""
-
 from __future__ import annotations
 
 from enum import StrEnum

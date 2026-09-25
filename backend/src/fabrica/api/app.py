@@ -1,5 +1,3 @@
-"""Aplicación FastAPI: `fabrica-api` o `uvicorn fabrica.api.app:app`."""
-
 from __future__ import annotations
 
 import logging
@@ -24,7 +22,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Fábrica SAP", version="0.1.0-beta", lifespan=lifespan)
+    app = FastAPI(title="Fábrica SAP", version="0.1.0", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(get_settings().cors_origins),

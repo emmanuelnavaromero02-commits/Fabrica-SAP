@@ -1,6 +1,3 @@
-# Copiar a ~/.codex/config.toml (o .codex/config.toml del proyecto) para que Codex
-# use los mismos MCP que Claude Code. Ajusta la ruta del repositorio.
-
 [mcp_servers.fabrica]
 command = "uv"
 args = ["run", "--project", "/ruta/a/Fabrica-SAP/backend", "fabrica-mcp-fabrica"]

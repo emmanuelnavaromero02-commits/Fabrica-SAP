@@ -1,5 +1,3 @@
-// Tipos del API. Reflejan fabrica/domain/schemas.py del backend.
-
 export type RunState = "running" | "waiting_gate" | "blocked" | "done";
 export type Outcome = "approve" | "reject" | "discard";
 export type Role = "admin" | "lider" | "funcional" | "usuario_clave" | "abap" | "consultor";

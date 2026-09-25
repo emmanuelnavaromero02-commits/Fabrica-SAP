@@ -1,9 +1,3 @@
-# Entorno completo de desarrollo:  docker compose up --build
-#   Web            http://localhost:5173
-#   API (Swagger)  http://localhost:8000/docs
-#   Temporal UI    http://localhost:8233
-#   Gitea          http://localhost:3000   (perfil opcional: --profile gitea)
-
 x-backend: &backend
   build: { context: ., dockerfile: backend/Dockerfile }
   env_file:
@@ -12,6 +6,7 @@ x-backend: &backend
   environment:
     FABRICA_DATABASE_URL: postgresql+asyncpg://fabrica:fabrica@postgres:5432/fabrica
     FABRICA_RUNNER: temporal
+    FABRICA_AUTO_SCHEMA: "false"
     FABRICA_TEMPORAL_HOST: temporal:7233
   volumes:
     - fabrica-data:/data
@@ -34,7 +29,6 @@ services:
     ports: ["5432:5432"]
 
   temporal:
-    # Servidor de desarrollo de Temporal (incluye la UI). En producción: clúster con permisos.
     image: temporalio/temporal:latest
     command: ["server", "start-dev", "--ip", "0.0.0.0", "--db-filename", "/data/temporal.db"]
     volumes: [temporal-data:/data]
@@ -42,7 +36,7 @@ services:
 
   api:
     <<: *backend
-    command: ["fabrica-api"]
+    command: ["sh", "-c", "fabrica-migrate upgrade && fabrica-api"]
     ports: ["8000:8000"]
 
   worker:

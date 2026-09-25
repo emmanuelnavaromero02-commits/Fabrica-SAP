@@ -1,8 +1,3 @@
-"""MCP `sap`: el Puente SAP expuesto como herramientas, con reglas y auditoría.
-
-Nunca libera transportes ni escribe fuera de DEV/paquetes Z-Y: lo impide GuardedBridge.
-"""
-
 from __future__ import annotations
 
 import json
@@ -52,7 +47,6 @@ async def escribir_objeto(
         try:
             await bridge.write_object(obj, transport=f"FABK9{requisito_id:05d}")
         except PolicyViolation as exc:
-            # Se devuelve (no se lanza) para que la auditoría del intento se guarde.
             return {"ok": False, "error": str(exc)}
         return {"ok": True, "sistema": bridge.system}
 

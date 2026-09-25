@@ -1,9 +1,3 @@
-"""SAP DEV simulado: guarda objetos en disco y aplica chequeos aproximados.
-
-Sirve para probar el ciclo completo (escribir → sintaxis → activar → ATC → pruebas)
-sin tocar ningún SAP. Un puente real (ADT/abap-adt-mcp) implementa el mismo contrato.
-"""
-
 from __future__ import annotations
 
 import json

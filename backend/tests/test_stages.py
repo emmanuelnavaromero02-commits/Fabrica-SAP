@@ -20,7 +20,7 @@ def test_wrong_role_cannot_decide() -> None:
     with pytest.raises(TransitionError):
         decide("revision_abap", "approve", "funcional")
     with pytest.raises(TransitionError):
-        decide("uat", "approve", "abap")  # la fábrica no aprueba la UAT del cliente
+        decide("uat", "approve", "abap")
 
 
 def test_discard_requires_leader() -> None:

@@ -2,7 +2,6 @@ import type { Stage } from "../types";
 
 const ICON: Record<Stage["kind"], string> = { auto: "🤖", gate: "👤", final: "🏁" };
 
-/** Línea de etapas: 🤖 = trabajan agentes, 👤 = decide una persona. */
 export function StageTimeline({ stages, current }: { stages: Stage[]; current: string }) {
   const visible = stages.filter((s) => s.key !== "desestimado" || s.key === current);
   const index = visible.findIndex((s) => s.key === current);

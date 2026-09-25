@@ -1,5 +1,3 @@
-"""Verifica que la spec sea construible: objetos Z válidos y aseveraciones ejecutables."""
-
 from __future__ import annotations
 
 from typing import Any

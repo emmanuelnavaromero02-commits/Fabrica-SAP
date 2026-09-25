@@ -1,5 +1,3 @@
-"""Construye el puente SAP de un requisito, ya envuelto con reglas y auditoría."""
-
 from __future__ import annotations
 
 from fabrica.blackboard.service import Board
@@ -10,7 +8,6 @@ from fabrica.sap.simulated import SimulatedSap
 
 
 def bridge_for(board: Board, req_id: int, actor: str) -> GuardedBridge:
-    """El sistema SAP lo decide el servidor, nunca el agente ni una cabecera."""
     settings = get_settings()
     inner = SimulatedSap(settings.data_dir / "sap")
 

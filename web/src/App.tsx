@@ -25,7 +25,7 @@ export function App() {
     <div className="app">
       <header className="topbar">
         <h1>🏭 Fábrica SAP</h1>
-        <span className="muted">beta · agentes con escalamiento N1→N4</span>
+        <span className="muted">escalamiento N1→N4</span>
         <IdentityBar who={who} onChange={setWho} />
       </header>
       <main className="layout">

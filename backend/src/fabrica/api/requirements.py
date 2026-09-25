@@ -1,9 +1,3 @@
-"""Rutas de requisitos: crear, listar, detalle, preguntas, decisiones y reanudar.
-
-Regla: se hace commit de la transacción ANTES de disparar el motor (`kick`),
-para que el motor siempre lea el estado ya guardado.
-"""
-
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException

@@ -1,5 +1,3 @@
-"""Cómo se dispara el motor: en el propio API (inline) o en Temporal."""
-
 from __future__ import annotations
 
 import asyncio
@@ -16,13 +14,10 @@ log = logging.getLogger(__name__)
 
 
 class Runner(Protocol):
-    async def kick(self, req_id: int) -> None:
-        """Hay trabajo automático nuevo para este requisito."""
+    async def kick(self, req_id: int) -> None: ...
 
 
 class InlineRunner:
-    """Desarrollo local: una tarea asyncio por requisito, sin solaparse."""
-
     def __init__(self, engine: Engine | None = None) -> None:
         self.engine = engine or Engine()
         self._locks: dict[int, asyncio.Lock] = {}
@@ -42,14 +37,11 @@ class InlineRunner:
         task.add_done_callback(self._tasks.discard)
 
     async def wait_idle(self) -> None:
-        """Espera a que terminen las tareas (útil en pruebas)."""
         while self._tasks:
             await asyncio.gather(*list(self._tasks))
 
 
 class TemporalRunner:
-    """Producción: un flujo `requisito-{id}` por requisito; `kick` le envía una señal."""
-
     def __init__(self, client: Client | None = None) -> None:
         self._client = client
 

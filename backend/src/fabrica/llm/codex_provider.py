@@ -1,10 +1,3 @@
-"""Proveedor Codex: ejecuta `codex exec` en un directorio de trabajo local.
-
-Codex corre en NUESTRA infraestructura, así que puede usar los MCP internos
-(incluido el Puente SAP) configurados en ~/.codex/config.toml del contenedor.
-Flags según `codex exec --help` (verificar al actualizar la CLI).
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -87,7 +80,6 @@ class CodexProvider:
 
 
 def _usage_from_events(jsonl: str) -> tuple[int, int]:
-    """Suma el uso reportado en los eventos JSONL de `codex exec --json`."""
     tokens_in = tokens_out = 0
     for line in jsonl.splitlines():
         try:

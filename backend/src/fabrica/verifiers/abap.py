@@ -1,5 +1,3 @@
-"""Verifica el ABAP en DEV: escribir → sintaxis → activar → ATC → pruebas (aseveraciones)."""
-
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
@@ -54,5 +52,5 @@ class AbapVerifier:
             stages[label] = "ok" if result.ok else "falla"
             issues += [f.as_text() for f in result.findings if f.severity == "error"]
             if label == "sintaxis" and not result.ok:
-                break  # sin sintaxis válida no tiene sentido seguir
+                break
         return Verification.from_issues(issues, stages=stages, system=self.bridge.system)

@@ -1,5 +1,3 @@
-// Cliente tipado del API. La identidad viaja en cabeceras (beta); en producción, token OIDC.
-
 import type {
   Identity,
   NewRequirement,

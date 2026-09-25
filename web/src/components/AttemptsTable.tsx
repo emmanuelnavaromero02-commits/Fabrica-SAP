@@ -2,7 +2,6 @@ import type { Attempt } from "../types";
 
 const usd = (n: number) => `$${n.toFixed(4)}`;
 
-/** Cada intento de cada agente: nivel, modelo, costo y si pasó la verificación. */
 export function AttemptsTable({ attempts }: { attempts: Attempt[] }) {
   if (attempts.length === 0) return <p className="muted">Sin intentos todavía.</p>;
   const total = attempts.reduce((sum, a) => sum + a.cost_usd, 0);

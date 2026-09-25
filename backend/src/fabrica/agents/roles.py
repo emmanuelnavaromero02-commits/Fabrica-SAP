@@ -1,9 +1,3 @@
-"""Definición de los agentes: rol, actividad, instrucciones y formato de salida.
-
-Los esquemas son JSON Schema estrictos (válidos para Claude y OpenAI): todos los
-campos requeridos y sin propiedades extra.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass

@@ -1,5 +1,3 @@
-"""Modelo de datos: el "tablero" compartido por agentes y personas."""
-
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -23,9 +21,9 @@ class Base(DeclarativeBase):
 
 
 class RunState(StrEnum):
-    RUNNING = "running"  # agentes trabajando
-    WAITING_GATE = "waiting_gate"  # espera decisión humana
-    BLOCKED = "blocked"  # faltan datos o se agotó el escalamiento
+    RUNNING = "running"
+    WAITING_GATE = "waiting_gate"
+    BLOCKED = "blocked"
     DONE = "done"
 
 
@@ -66,15 +64,13 @@ class Document(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     requirement_id: Mapped[int] = mapped_column(ForeignKey("requirements.id"), index=True)
     name: Mapped[str] = mapped_column(String(200))
-    kind: Mapped[str] = mapped_column(String(40))  # especificacion, transcripcion, pantallas…
+    kind: Mapped[str] = mapped_column(String(40))
     content: Mapped[str] = mapped_column(Text)
 
     requirement: Mapped[Requirement] = relationship(back_populates="documents")
 
 
 class Message(Base):
-    """Mensaje tipado entre agentes y/o personas, agrupado por hilo (actividad)."""
-
     __tablename__ = "messages"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -90,14 +86,12 @@ class Message(Base):
 
 
 class Decision(Base):
-    """Decisión humana en una compuerta. El actor sale de la sesión, nunca de texto libre."""
-
     __tablename__ = "decisions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     requirement_id: Mapped[int] = mapped_column(ForeignKey("requirements.id"), index=True)
     stage: Mapped[str] = mapped_column(String(40))
-    outcome: Mapped[str] = mapped_column(String(20))  # approve | reject | discard
+    outcome: Mapped[str] = mapped_column(String(20))
     actor: Mapped[str] = mapped_column(String(80))
     role: Mapped[str] = mapped_column(String(40))
     comment: Mapped[str] = mapped_column(Text, default="")
@@ -105,8 +99,6 @@ class Decision(Base):
 
 
 class Attempt(Base):
-    """Cada llamada a un modelo: nivel, proveedor, tokens, costo y si pasó la verificación."""
-
     __tablename__ = "attempts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -124,8 +116,6 @@ class Attempt(Base):
 
 
 class Artifact(Base):
-    """Índice de lo que se guardó en Git (spec, código, evidencias)."""
-
     __tablename__ = "artifacts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -137,8 +127,6 @@ class Artifact(Base):
 
 
 class SapCall(Base):
-    """Auditoría de cada llamada al Puente SAP."""
-
     __tablename__ = "sap_calls"
 
     id: Mapped[int] = mapped_column(primary_key=True)

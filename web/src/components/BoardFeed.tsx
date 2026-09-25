@@ -18,7 +18,6 @@ interface Props {
   onAnswer: (messageId: number, body: string) => Promise<void>;
 }
 
-/** El tablero: la conversación tipada entre agentes y personas. */
 export function BoardFeed({ messages, onAnswer }: Props) {
   return (
     <ul className="feed">

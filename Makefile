@@ -2,35 +2,35 @@
 
 BACKEND := cd backend &&
 
-install:            ## Instala backend (uv) y frontend (npm)
+install:
 	$(BACKEND) uv sync --extra dev
 	cd web && npm install
 
-api:                ## API en http://localhost:8000 (modo inline + mock por defecto)
+api:
 	$(BACKEND) uv run uvicorn fabrica.api.app:app --reload --port 8000
 
-web:                ## Web en http://localhost:5173
+web:
 	cd web && npm run dev
 
-worker:             ## Worker de Temporal (requiere FABRICA_RUNNER=temporal)
+worker:
 	$(BACKEND) uv run fabrica-worker
 
-mcp-fabrica:        ## MCP del tablero por stdio
+mcp-fabrica:
 	$(BACKEND) uv run fabrica-mcp-fabrica
 
-mcp-sap:            ## MCP del Puente SAP por stdio
+mcp-sap:
 	$(BACKEND) uv run fabrica-mcp-sap
 
-test:               ## Pruebas del backend
+test:
 	$(BACKEND) uv run pytest -q
 
-lint:               ## Lint, formato y tipos (backend y frontend)
+lint:
 	$(BACKEND) uv run ruff check src tests && uv run ruff format --check src tests && uv run mypy src
 	cd web && npm run typecheck
 
-check: lint test    ## Todo lo que corre CI
+check: lint test
 
-up:                 ## Entorno completo con Docker (Postgres, Temporal, API, worker, web)
+up:
 	docker compose up --build
 
 down:

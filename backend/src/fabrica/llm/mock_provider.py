@@ -1,11 +1,3 @@
-"""Proveedor simulado: permite probar toda la fábrica sin llaves de API.
-
-Comportamiento determinista y pensado para la demo:
-- `analizar` pregunta al cliente si el requisito llega sin documentos.
-- `implementar` en N1/N2 deja un `SELECT *` (lo detecta ATC) y así se ve el
-  escalamiento; desde N3 entrega código limpio usando el paquete de relevo.
-"""
-
 from __future__ import annotations
 
 import json

@@ -1,12 +1,3 @@
-"""Puente SAP: contrato + reglas de seguridad que ningún agente puede saltarse.
-
-Reglas fijas:
-- Solo escribe en sistemas DEV.
-- Solo toca objetos de paquetes permitidos (Z*/Y*).
-- Nunca libera transportes (no existe la operación).
-- Toda llamada queda auditada.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
@@ -18,7 +9,7 @@ Severity = Literal["error", "warning"]
 
 @dataclass(frozen=True)
 class Finding:
-    check: str  # syntax | activation | atc | unit
+    check: str
     severity: Severity
     message: str
 
@@ -29,7 +20,7 @@ class Finding:
 @dataclass(frozen=True)
 class SapObject:
     name: str
-    type: str  # PROG, CLAS, FUGR…
+    type: str
     package: str
     source: str
 
@@ -61,16 +52,13 @@ class SapBridge(Protocol):
     async def run_unit(self, name: str, assertions: list[Assertion]) -> CheckResult: ...
 
 
-class PolicyViolation(PermissionError):
-    """Operación prohibida por las reglas del puente."""
+class PolicyViolation(PermissionError): ...
 
 
 AuditFn = Callable[[str, str, bool, str], Awaitable[None]]
 
 
 class GuardedBridge:
-    """Envuelve un puente real o simulado y aplica las reglas antes de cada llamada."""
-
     def __init__(self, inner: SapBridge, allowed_packages: tuple[str, ...], audit: AuditFn) -> None:
         self.inner = inner
         self.system = inner.system

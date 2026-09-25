@@ -1,12 +1,8 @@
-"""Repositorio por requisito: Git local (desarrollo) o Gitea (servidor).
-
-Git guarda el trabajo (spec, código, evidencias); el tablero SQL solo guarda el índice.
-"""
-
 from __future__ import annotations
 
 import asyncio
 import base64
+import json
 import os
 from pathlib import Path
 from typing import Protocol
@@ -29,8 +25,6 @@ def repo_name(req_id: int) -> str:
 
 
 class LocalRepoStore:
-    """Un repo git real en data/repos/req-N. No necesita servidor."""
-
     def __init__(self, root: Path) -> None:
         self.root = root
 
@@ -66,7 +60,9 @@ class LocalRepoStore:
         if not (path / ".git").exists():
             path.mkdir(parents=True, exist_ok=True)
             await self._git(path, "init", "-q", "-b", "main")
-            (path / "README.md").write_text(f"# {title}\n", encoding="utf-8")
+            (path / "requisito.json").write_text(
+                json.dumps({"id": req_id, "titulo": title}, ensure_ascii=False), encoding="utf-8"
+            )
             await self._git(path, "add", "-A")
             await self._git(
                 path, "commit", "-q", "-m", "Inicio del requisito", env_author="fabrica"
@@ -95,8 +91,6 @@ class LocalRepoStore:
 
 
 class GiteaRepoStore:
-    """Repos privados en una organización de Gitea, vía su API REST."""
-
     def __init__(self, url: str, token: str, org: str) -> None:
         self.org = org
         self.http = httpx.AsyncClient(
