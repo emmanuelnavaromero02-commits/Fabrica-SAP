@@ -130,3 +130,8 @@ code { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.9em;
 .login { display: grid; gap: 16px; justify-items: center; margin-top: 20vh; }
 .user { align-self: center; font-weight: 600; white-space: nowrap; }
 .transport { margin: 4px 0; }
+.files { display: grid; gap: 4px; font-size: 0.9em; color: var(--muted); }
+.estimate { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+.estimate ul { margin: 6px 0; padding-left: 18px; }
+.docs { list-style: none; padding: 0; display: grid; gap: 6px; }
+.docs pre { white-space: pre-wrap; font-size: 0.85em; max-height: 320px; overflow: auto; background: var(--bg); padding: 8px; border-radius: 8px; }

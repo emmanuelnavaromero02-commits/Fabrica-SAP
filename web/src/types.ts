@@ -87,6 +87,25 @@ export interface Transport {
   created_at: string;
 }
 
+export interface Estimate {
+  id: number;
+  items: { object: string; size: string; rationale: string; hours: number }[];
+  breakdown: Record<string, number>;
+  assumptions: string[];
+  hours_base: number;
+  hours_total: number;
+  days: number;
+  complexity: string;
+  created_at: string;
+}
+
+export interface DocumentFile {
+  id: number;
+  name: string;
+  kind: string;
+  content: string;
+}
+
 export interface RequirementDetail {
   requirement: Requirement;
   messages: Message[];
@@ -94,6 +113,7 @@ export interface RequirementDetail {
   decisions: Decision[];
   artifacts: Artifact[];
   transports: Transport[];
+  estimate: Estimate | null;
 }
 
 export interface Stage {

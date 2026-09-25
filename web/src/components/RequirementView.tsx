@@ -6,14 +6,17 @@ import { usePolling } from "../hooks";
 import type { Outcome, Stage } from "../types";
 import { AttemptsTable } from "./AttemptsTable";
 import { BoardFeed } from "./BoardFeed";
+import { DocumentsPanel } from "./DocumentsPanel";
+import { EstimateCard } from "./EstimateCard";
 import { GateActions } from "./GateActions";
 import { StageTimeline } from "./StageTimeline";
 import { StateBadge } from "./StateBadge";
 
-type Tab = "tablero" | "escalamiento" | "git" | "decisiones";
+type Tab = "tablero" | "documentos" | "escalamiento" | "git" | "decisiones";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "tablero", label: "🗨️ Tablero" },
+  { key: "documentos", label: "📎 Documentos" },
   { key: "escalamiento", label: "⬆️ Escalamiento" },
   { key: "git", label: "📦 Git" },
   { key: "decisiones", label: "⚖️ Decisiones" },
@@ -56,6 +59,7 @@ export function RequirementView({ session, id, stages, onChanged }: Props) {
       <p>{req.description}</p>
 
       <StageTimeline stages={stages} current={req.stage} />
+      {data.estimate && <EstimateCard estimate={data.estimate} />}
       <GateActions
         session={session}
         requirement={req}
@@ -84,6 +88,7 @@ export function RequirementView({ session, id, stages, onChanged }: Props) {
           onAnswer={(messageId, body) => after(api.answer(session, id, messageId, body))}
         />
       )}
+      {tab === "documentos" && <DocumentsPanel session={session} id={id} />}
       {tab === "escalamiento" && <AttemptsTable attempts={data.attempts} />}
       {tab === "git" && (
         <div>

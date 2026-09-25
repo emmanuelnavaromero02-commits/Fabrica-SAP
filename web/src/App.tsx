@@ -32,8 +32,10 @@ function Workspace({ session, bar }: { session: Session; bar: ReactNode }) {
       <main className="layout">
         <aside className="sidebar">
           <NewRequirementForm
-            onCreate={async (data) => {
-              const created = await api.create(session, data);
+            onCreate={async (data, files) => {
+              const created = files.length
+                ? await api.createWithFiles(session, data, files)
+                : await api.create(session, data);
               setSelected(created.id);
               await list.refresh();
             }}

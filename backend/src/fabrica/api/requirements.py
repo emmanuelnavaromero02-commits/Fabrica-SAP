@@ -13,6 +13,7 @@ from fabrica.domain.schemas import (
     AttemptOut,
     DecisionIn,
     DecisionOut,
+    EstimateOut,
     MessageOut,
     RequirementDetail,
     RequirementIn,
@@ -48,6 +49,7 @@ async def detail(req_id: int, who: Who) -> RequirementDetail:
             req = await board.requirement(req_id)
         except LookupError as exc:
             raise HTTPException(404, str(exc)) from exc
+        estimate = await board.latest_estimate(req_id)
         return RequirementDetail(
             requirement=RequirementOut.model_validate(req),
             messages=[MessageOut.model_validate(m) for m in await board.messages(req_id)],
@@ -55,6 +57,7 @@ async def detail(req_id: int, who: Who) -> RequirementDetail:
             decisions=[DecisionOut.model_validate(d) for d in await board.decisions(req_id)],
             artifacts=[ArtifactOut.model_validate(a) for a in await board.artifacts(req_id)],
             transports=[TransportOut.model_validate(t) for t in await board.transports(req_id)],
+            estimate=EstimateOut.model_validate(estimate) if estimate else None,
         )
 
 

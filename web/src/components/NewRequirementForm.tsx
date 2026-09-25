@@ -3,13 +3,14 @@ import { type FormEvent, useState } from "react";
 import type { NewRequirement } from "../types";
 
 interface Props {
-  onCreate: (data: NewRequirement) => Promise<void>;
+  onCreate: (data: NewRequirement, files: File[]) => Promise<void>;
 }
 
 export function NewRequirementForm({ onCreate }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [spec, setSpec] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,10 +24,11 @@ export function NewRequirementForm({ onCreate }: Props) {
         description,
         project: "demo",
         documents: spec.trim() ? [{ name: "especificacion", kind: "especificacion", content: spec }] : [],
-      });
+      }, files);
       setTitle("");
       setDescription("");
       setSpec("");
+      setFiles([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -58,6 +60,16 @@ export function NewRequirementForm({ onCreate }: Props) {
         onChange={(e) => setSpec(e.target.value)}
         rows={3}
       />
+      <label className="files">
+        📎 Documentos (PDF, DOCX, TXT)
+        <input
+          type="file"
+          multiple
+          accept=".pdf,.docx,.txt,.md,.vtt,.srt,.csv"
+          onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+        />
+      </label>
+      {files.length > 0 && <p className="muted">{files.map((f) => f.name).join(", ")}</p>}
       {error && <p className="error">{error}</p>}
       <button type="submit" disabled={busy}>
         {busy ? "Creando…" : "Crear y enviar a la fábrica"}

@@ -75,6 +75,29 @@ ARQUITECTO = AgentRole(
     ),
 )
 
+ESTIMADOR = AgentRole(
+    "estimador",
+    "estimar",
+    f"{_COMMON} Eres líder técnico SAP. Asigna una talla (XS, S, M, L, XL) a cada objeto de la "
+    "spec según su esfuerzo real de construcción y pruebas. Justifica cada talla y lista las "
+    "asunciones. Las horas las calcula la fábrica a partir de las tallas.",
+    _obj(
+        {
+            "items": {
+                "type": "array",
+                "items": _obj(
+                    {
+                        "object": _STR,
+                        "size": {"type": "string", "enum": ["XS", "S", "M", "L", "XL"]},
+                        "rationale": _STR,
+                    }
+                ),
+            },
+            "assumptions": _STRS,
+        }
+    ),
+)
+
 DESARROLLADOR = AgentRole(
     "desarrollador",
     "implementar",

@@ -10,6 +10,7 @@ from fabrica.db.models import (
     Artifact,
     Attempt,
     Decision,
+    Estimate,
     Message,
     MessageKind,
     Requirement,
@@ -130,3 +131,7 @@ class Board:
     async def transports(self, req_id: int) -> list[Transport]:
         q = select(Transport).where(Transport.requirement_id == req_id).order_by(Transport.id)
         return list((await self.s.scalars(q)).all())
+
+    async def latest_estimate(self, req_id: int) -> Estimate | None:
+        q = select(Estimate).where(Estimate.requirement_id == req_id).order_by(Estimate.id.desc())
+        return (await self.s.scalars(q)).first()

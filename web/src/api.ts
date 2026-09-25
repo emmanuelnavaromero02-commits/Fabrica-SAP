@@ -1,5 +1,6 @@
 import type { Session } from "./auth";
 import type {
+  DocumentFile,
   Identity,
   NewRequirement,
   Outcome,
@@ -35,6 +36,24 @@ export async function request<T>(session: Session, path: string, init: RequestIn
   return response.status === 204 ? (undefined as T) : ((await response.json()) as T);
 }
 
+function formWith(files: File[], fields: Record<string, string>): FormData {
+  const form = new FormData();
+  for (const [key, value] of Object.entries(fields)) form.append(key, value);
+  for (const file of files) {
+    form.append("files", file);
+    form.append("kinds", kindOf(file.name));
+  }
+  return form;
+}
+
+function kindOf(filename: string): string {
+  const name = filename.toLowerCase();
+  if (name.includes("transcrip") || name.endsWith(".vtt") || name.endsWith(".srt")) return "transcripcion";
+  if (name.includes("cuestionario")) return "cuestionario";
+  if (name.includes("pantalla")) return "pantallas";
+  return "especificacion";
+}
+
 export const post = (body: unknown): RequestInit => ({ method: "POST", body: JSON.stringify(body) });
 
 export const api = {
@@ -48,6 +67,21 @@ export const api = {
     request<void>(s, `/api/requirements/${id}/answers`, post({ message_id: messageId, body })),
   decide: (s: Session, id: number, outcome: Outcome, comment: string) =>
     request<void>(s, `/api/requirements/${id}/decisions`, post({ outcome, comment })),
+  createWithFiles: (s: Session, data: NewRequirement, files: File[]) =>
+    request<Requirement>(s, "/api/requirements/with-files", {
+      method: "POST",
+      body: formWith(
+        [...files, ...data.documents.map((d) => new File([d.content], `${d.name}.txt`))],
+        { title: data.title, description: data.description, project: data.project },
+      ),
+    }),
+  documents: (s: Session, id: number) =>
+    request<DocumentFile[]>(s, `/api/requirements/${id}/documents`),
+  addDocuments: (s: Session, id: number, files: File[]) =>
+    request<DocumentFile[]>(s, `/api/requirements/${id}/documents`, {
+      method: "POST",
+      body: formWith(files, {}),
+    }),
   resume: (s: Session, id: number) =>
     request<void>(s, `/api/requirements/${id}/resume`, { method: "POST" }),
 };

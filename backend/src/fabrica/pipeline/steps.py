@@ -9,6 +9,7 @@ from fabrica.blackboard.service import Board
 from fabrica.config import get_settings
 from fabrica.db.models import MessageKind, Requirement
 from fabrica.escalation.router import EscalationRouter
+from fabrica.estimation.step import estimate_file, estimate_requirement
 from fabrica.git.repo import RepoStore
 from fabrica.knowledge.standards import standards
 from fabrica.llm.base import LLMRequest
@@ -131,13 +132,17 @@ class Steps:
         )
         if not out.passed or out.output is None:
             return StepResult("blocked", "El diseño requiere una persona")
+        estimate = await estimate_requirement(self.router, self.board, req, out.output)
+        if estimate is None:
+            return StepResult("blocked", "La estimación requiere una persona")
         await self._save(
             req,
             {
                 "diseno/spec.md": out.output["spec_markdown"],
                 SPEC_JSON: json.dumps(out.output, ensure_ascii=False, indent=2),
+                "diseno/estimacion.json": estimate_file(estimate),
             },
-            "Diseño: especificación y aseveraciones",
+            "Diseño: especificación, aseveraciones y estimación",
             roles.ARQUITECTO.name,
         )
         return StepResult("advance")

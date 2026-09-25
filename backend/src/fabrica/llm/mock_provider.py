@@ -106,6 +106,16 @@ class MockProvider:
             "notes": "Borrador inicial" if weak else "Corregido con el paquete de relevo",
         }
 
+    def _estimar(self, prompt: str, tier: str) -> dict[str, Any]:
+        names = re.findall(r'"name": "([^"]+)"', prompt) or ["Z_REQ"]
+        return {
+            "items": [
+                {"object": n, "size": "M", "rationale": "Reporte con selección y ALV"}
+                for n in names
+            ],
+            "assumptions": ["Datos maestros disponibles en DEV"],
+        }
+
     def _revisar(self, prompt: str, tier: str) -> dict[str, Any]:
         code = prompt.split("## Código", 1)[-1]
         issues = ["Evitar SELECT *: leer solo campos necesarios"] if "SELECT *" in code else []

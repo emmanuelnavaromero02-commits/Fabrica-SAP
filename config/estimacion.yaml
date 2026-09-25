@@ -1,0 +1,18 @@
+sizes:
+  XS: { backend: 4, frontend: 0, pruebas: 2 }
+  S: { backend: 8, frontend: 4, pruebas: 4 }
+  M: { backend: 24, frontend: 8, pruebas: 8 }
+  L: { backend: 60, frontend: 20, pruebas: 16 }
+  XL: { backend: 120, frontend: 40, pruebas: 32 }
+fixed_hours:
+  plan_de_pruebas: 4
+  pruebas_funcionales: 8
+  acompanamiento_uat: 8
+  despliegue: 4
+contingency: 0.15
+hours_per_day: 8
+complexity:
+  - { up_to: 40, label: S }
+  - { up_to: 100, label: M }
+  - { up_to: 250, label: L }
+  - { up_to: 100000, label: XL }

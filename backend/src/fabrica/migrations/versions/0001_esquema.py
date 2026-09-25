@@ -149,6 +149,29 @@ def upgrade() -> None:
         )
 
     op.create_table(
+        "estimates",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("requirement_id", sa.Integer(), nullable=False),
+        sa.Column("items", sa.JSON(), nullable=False),
+        sa.Column("breakdown", sa.JSON(), nullable=False),
+        sa.Column("assumptions", sa.JSON(), nullable=False),
+        sa.Column("hours_base", sa.Double(), nullable=False),
+        sa.Column("hours_total", sa.Double(), nullable=False),
+        sa.Column("days", sa.Double(), nullable=False),
+        sa.Column("complexity", sa.String(length=4), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["requirement_id"],
+            ["requirements.id"],
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    with op.batch_alter_table("estimates", schema=None) as batch_op:
+        batch_op.create_index(
+            batch_op.f("ix_estimates_requirement_id"), ["requirement_id"], unique=False
+        )
+
+    op.create_table(
         "messages",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("requirement_id", sa.Integer(), nullable=False),
@@ -201,6 +224,10 @@ def downgrade() -> None:
         batch_op.drop_index(batch_op.f("ix_messages_requirement_id"))
 
     op.drop_table("messages")
+    with op.batch_alter_table("estimates", schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f("ix_estimates_requirement_id"))
+
+    op.drop_table("estimates")
     with op.batch_alter_table("documents", schema=None) as batch_op:
         batch_op.drop_index(batch_op.f("ix_documents_requirement_id"))
 

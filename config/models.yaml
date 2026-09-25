@@ -24,6 +24,7 @@ activities:
   analizar:        { start: N1, max_tier: N3, attempts: 1 }
   disenar_spec:    { start: N3, max_tier: N4, attempts: 2 }
   implementar:     { start: N2, max_tier: N4, attempts: 2 }
+  estimar:         { start: N2, max_tier: N3, attempts: 1 }
   revisar:         { start: N3, max_tier: N3, attempts: 1, cross_vendor: true }
   documentar:      { start: N1, max_tier: N2, attempts: 1 }
 

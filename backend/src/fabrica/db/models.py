@@ -163,3 +163,18 @@ class Lesson(Base):
     requirement_id: Mapped[int | None] = mapped_column(index=True)
     uses: Mapped[int] = mapped_column(default=0)
     created_at: Mapped[datetime] = mapped_column(default=now)
+
+
+class Estimate(Base):
+    __tablename__ = "estimates"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    requirement_id: Mapped[int] = mapped_column(ForeignKey("requirements.id"), index=True)
+    items: Mapped[list[Any]] = mapped_column(default=list)
+    breakdown: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    assumptions: Mapped[list[Any]] = mapped_column(default=list)
+    hours_base: Mapped[float] = mapped_column(default=0.0)
+    hours_total: Mapped[float] = mapped_column(default=0.0)
+    days: Mapped[float] = mapped_column(default=0.0)
+    complexity: Mapped[str] = mapped_column(String(4))
+    created_at: Mapped[datetime] = mapped_column(default=now)

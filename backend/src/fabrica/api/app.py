@@ -8,7 +8,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from fabrica.api import meta, requirements
+from fabrica.api import documents, meta, requirements
 from fabrica.api.deps import build_verifier
 from fabrica.config import get_settings
 from fabrica.db.session import init_db
@@ -31,6 +31,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.include_router(documents.router)
     app.include_router(requirements.router)
     app.include_router(meta.router)
 

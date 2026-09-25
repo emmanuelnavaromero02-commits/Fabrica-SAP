@@ -16,6 +16,13 @@ class DocumentIn(BaseModel):
     content: str
 
 
+class DocumentOut(ORM):
+    id: int
+    name: str
+    kind: str
+    content: str
+
+
 class RequirementIn(BaseModel):
     title: str = Field(min_length=3, max_length=200)
     description: str = Field(min_length=10)
@@ -102,6 +109,18 @@ class TransportOut(ORM):
     created_at: datetime
 
 
+class EstimateOut(ORM):
+    id: int
+    items: list[dict[str, Any]]
+    breakdown: dict[str, float]
+    assumptions: list[str]
+    hours_base: float
+    hours_total: float
+    days: float
+    complexity: str
+    created_at: datetime
+
+
 class RequirementDetail(BaseModel):
     requirement: RequirementOut
     messages: list[MessageOut]
@@ -109,6 +128,7 @@ class RequirementDetail(BaseModel):
     decisions: list[DecisionOut]
     artifacts: list[ArtifactOut]
     transports: list[TransportOut] = Field(default_factory=list)
+    estimate: EstimateOut | None = None
 
 
 class StageOut(BaseModel):

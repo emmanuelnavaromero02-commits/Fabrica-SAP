@@ -58,6 +58,9 @@ async def test_full_factory_flow(api: Any, isolated: Path) -> None:
     d = await _detail(client, req_id)
     assert d["requirement"]["stage"] == "aprobacion_cliente"
     assert d["requirement"]["capability"] == "FI"
+    estimate = d["estimate"]
+    assert estimate["items"][0]["size"] == "M" and estimate["complexity"] == "M"
+    assert estimate["hours_total"] == round((40 + 24) * 1.15, 2)
 
     resp = await client.post(
         f"/api/requirements/{req_id}/decisions",
