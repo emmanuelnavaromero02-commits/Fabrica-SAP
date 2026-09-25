@@ -1,0 +1,16 @@
+global:
+  - Lecturas a base de datos con campos explícitos y cláusula WHERE; nunca SELECT *.
+  - Sin SQL nativo (EXEC SQL) ni modificaciones directas a tablas estándar.
+  - Solo APIs liberadas (Clean Core); nada de objetos SAP modificados.
+  - Objetos nuevos solo en paquetes Z o Y del proyecto.
+  - Textos visibles en elementos de texto o clases de mensajes, no literales.
+  - Autorizaciones con AUTHORITY-CHECK antes de leer datos sensibles.
+  - Pruebas ABAP Unit para la lógica de negocio.
+capabilities:
+  FI:
+    - Contabilización con BAPI_ACC_DOCUMENT_POST o APIs RAP liberadas; nunca batch input.
+    - Importes con su moneda de referencia (CURR con CUKY).
+  SD:
+    - Documentos de venta con BAPI_SALESORDER_CREATEFROMDAT2 o API liberada de pedido.
+  MM:
+    - Movimientos de mercancía con BAPI_GOODSMVT_CREATE o API liberada.

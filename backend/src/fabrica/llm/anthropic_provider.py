@@ -1,5 +1,3 @@
-"""Proveedor Claude (Anthropic SDK): pensamiento adaptativo, esfuerzo y salida estructurada."""
-
 from __future__ import annotations
 
 import json
@@ -10,7 +8,6 @@ import anthropic
 from fabrica.catalog import ModelSpec
 from fabrica.llm.base import LLMError, LLMRequest, LLMResult
 
-# Haiku 4.5 no admite pensamiento adaptativo ni `effort`.
 _NO_ADAPTIVE = ("claude-haiku-4-5",)
 _FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
@@ -19,7 +16,6 @@ class AnthropicProvider:
     name = "anthropic"
 
     def __init__(self, client: anthropic.AsyncAnthropic | None = None) -> None:
-        # Credenciales desde el entorno (ANTHROPIC_API_KEY o perfil de `ant auth login`).
         self.client = client or anthropic.AsyncAnthropic()
 
     def _params(self, spec: ModelSpec, req: LLMRequest) -> dict[str, Any]:
@@ -28,7 +24,6 @@ class AnthropicProvider:
             "model": spec.model,
             "max_tokens": req.max_tokens,
             "system": [
-                # El system prompt de cada agente es estable → se cachea.
                 {"type": "text", "text": req.system, "cache_control": {"type": "ephemeral"}}
             ],
             "messages": [{"role": "user", "content": req.prompt}],
@@ -47,7 +42,6 @@ class AnthropicProvider:
         params = self._params(spec, request)
         try:
             if spec.fallbacks:
-                # Si el modelo rechaza por seguridad, la API reintenta con el respaldo recomendado.
                 async with self.client.beta.messages.stream(
                     **params, betas=[_FALLBACK_BETA], fallbacks="default"
                 ) as beta_stream:
@@ -63,7 +57,11 @@ class AnthropicProvider:
             raise LLMError("Sin conexión con Anthropic") from exc
 
         usage = message.usage
-        tokens_in = usage.input_tokens + (usage.cache_read_input_tokens or 0)
+        tokens_in = (
+            usage.input_tokens
+            + (usage.cache_read_input_tokens or 0)
+            + (usage.cache_creation_input_tokens or 0)
+        )
         if message.stop_reason == "refusal":
             return LLMResult("", None, tokens_in, usage.output_tokens, refused=True)
 
@@ -73,5 +71,9 @@ class AnthropicProvider:
             try:
                 data = json.loads(text)
             except json.JSONDecodeError as exc:
-                raise LLMError("Claude devolvió JSON inválido") from exc
+                raise LLMError(
+                    f"Claude devolvió JSON inválido (stop_reason={message.stop_reason})",
+                    tokens_in,
+                    usage.output_tokens,
+                ) from exc
         return LLMResult(text, data, tokens_in, usage.output_tokens)

@@ -1,5 +1,3 @@
-"""Proveedor OpenAI (Responses API) para tareas de razonamiento sin archivos."""
-
 from __future__ import annotations
 
 import json
@@ -15,7 +13,7 @@ class OpenAIProvider:
     name = "openai"
 
     def __init__(self, client: openai.AsyncOpenAI | None = None) -> None:
-        self.client = client or openai.AsyncOpenAI()  # OPENAI_API_KEY desde el entorno
+        self.client = client or openai.AsyncOpenAI()
 
     async def complete(self, spec: ModelSpec, request: LLMRequest) -> LLMResult:
         params: dict[str, Any] = {
@@ -44,15 +42,12 @@ class OpenAIProvider:
 
         text = response.output_text
         usage = response.usage
+        tokens_in = usage.input_tokens if usage else 0
+        tokens_out = usage.output_tokens if usage else 0
         data = None
         if request.schema:
             try:
                 data = json.loads(text)
             except json.JSONDecodeError as exc:
-                raise LLMError("OpenAI devolvió JSON inválido") from exc
-        return LLMResult(
-            text,
-            data,
-            usage.input_tokens if usage else 0,
-            usage.output_tokens if usage else 0,
-        )
+                raise LLMError("OpenAI devolvió JSON inválido", tokens_in, tokens_out) from exc
+        return LLMResult(text, data, tokens_in, tokens_out)

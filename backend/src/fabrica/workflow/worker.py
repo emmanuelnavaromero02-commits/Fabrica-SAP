@@ -1,5 +1,3 @@
-"""Worker de Temporal: `fabrica-worker` (necesita FABRICA_RUNNER=temporal en el API)."""
-
 from __future__ import annotations
 
 import asyncio

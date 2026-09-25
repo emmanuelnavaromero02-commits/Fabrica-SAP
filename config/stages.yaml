@@ -1,8 +1,3 @@
-# Máquina de etapas: única fuente de verdad para API, flujo, UI y reportes.
-# kind: auto  → la ejecutan agentes
-#       gate  → espera la decisión de una persona con uno de los roles indicados
-#       final → terminal
-
 stages:
   - key: recepcion
     label: Recepción
@@ -41,5 +36,4 @@ stages:
     label: Desestimado
     kind: final
 
-# Quién puede desestimar un requisito en cualquier etapa no final.
 discard_roles: [admin, lider]

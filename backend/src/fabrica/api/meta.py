@@ -1,5 +1,3 @@
-"""Rutas de catálogo y métricas: etapas, niveles de modelos y gasto."""
-
 from __future__ import annotations
 
 from typing import Any
@@ -9,9 +7,10 @@ from sqlalchemy import Integer, cast, func, select
 
 from fabrica.api.deps import Who
 from fabrica.catalog import model_catalog, stage_machine
+from fabrica.config import get_settings
 from fabrica.db.models import Attempt
 from fabrica.db.session import session_scope
-from fabrica.domain.schemas import Identity, StageOut
+from fabrica.domain.schemas import AuthConfigOut, Identity, StageOut
 
 router = APIRouter(prefix="/api", tags=["catálogo"])
 
@@ -21,10 +20,25 @@ async def me(who: Who) -> Identity:
     return who
 
 
+@router.get("/auth/config", response_model=AuthConfigOut)
+async def auth_config() -> AuthConfigOut:
+    settings = get_settings()
+    return AuthConfigOut(
+        mode=settings.auth_mode, issuer=settings.oidc_issuer, client_id=settings.oidc_client_id
+    )
+
+
 @router.get("/stages", response_model=list[StageOut])
 async def stages() -> list[StageOut]:
     return [
-        StageOut(key=s.key, label=s.label, kind=s.kind.value, roles=s.roles)
+        StageOut(
+            key=s.key,
+            label=s.label,
+            kind=s.kind.value,
+            roles=s.roles,
+            next=s.next,
+            on_reject=s.on_reject,
+        )
         for s in stage_machine().stages
     ]
 
@@ -41,7 +55,6 @@ async def tiers() -> dict[str, Any]:
 
 @router.get("/usage")
 async def usage(who: Who) -> list[dict[str, Any]]:
-    """Gasto y tasa de éxito por actividad, nivel y proveedor: base para calibrar el router."""
     async with session_scope() as s:
         rows = await s.execute(
             select(

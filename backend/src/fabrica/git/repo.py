@@ -1,15 +1,12 @@
-"""Repositorio por requisito: Git local (desarrollo) o Gitea (servidor).
-
-Git guarda el trabajo (spec, código, evidencias); el tablero SQL solo guarda el índice.
-"""
-
 from __future__ import annotations
 
 import asyncio
 import base64
+import json
 import os
 from pathlib import Path
 from typing import Protocol
+from urllib.parse import quote
 
 import httpx
 
@@ -22,15 +19,27 @@ class RepoStore(Protocol):
         self, req_id: int, files: dict[str, str], message: str, author: str
     ) -> str: ...
     async def read_file(self, req_id: int, path: str) -> str | None: ...
+    def clone_url(self, req_id: int) -> str: ...
+    def git_auth_env(self) -> dict[str, str]: ...
 
 
 def repo_name(req_id: int) -> str:
     return f"req-{req_id}"
 
 
-class LocalRepoStore:
-    """Un repo git real en data/repos/req-N. No necesita servidor."""
+def safe_repo_path(path: str) -> str:
+    parts = path.split("/")
+    if (
+        not path
+        or path.startswith("/")
+        or any(ch in path for ch in "\\?#\0")
+        or any(part in ("", ".", "..") for part in parts)
+    ):
+        raise ValueError(f"Ruta no permitida en el repo: {path!r}")
+    return quote(path, safe="/")
 
+
+class LocalRepoStore:
     def __init__(self, root: Path) -> None:
         self.root = root
 
@@ -66,7 +75,9 @@ class LocalRepoStore:
         if not (path / ".git").exists():
             path.mkdir(parents=True, exist_ok=True)
             await self._git(path, "init", "-q", "-b", "main")
-            (path / "README.md").write_text(f"# {title}\n", encoding="utf-8")
+            (path / "requisito.json").write_text(
+                json.dumps({"id": req_id, "titulo": title}, ensure_ascii=False), encoding="utf-8"
+            )
             await self._git(path, "add", "-A")
             await self._git(
                 path, "commit", "-q", "-m", "Inicio del requisito", env_author="fabrica"
@@ -89,14 +100,21 @@ class LocalRepoStore:
         await self._git(path, "commit", "-q", "-m", message, env_author=author)
         return await self._git(path, "rev-parse", "HEAD")
 
+    def clone_url(self, req_id: int) -> str:
+        return self.path(req_id).as_uri()
+
+    def git_auth_env(self) -> dict[str, str]:
+        return {}
+
     async def read_file(self, req_id: int, path: str) -> str | None:
-        target = self.path(req_id) / path
-        return target.read_text(encoding="utf-8") if target.exists() else None
+        root = self.path(req_id).resolve()
+        target = (root / path).resolve()
+        if root not in target.parents or not target.is_file():
+            return None
+        return target.read_text(encoding="utf-8")
 
 
 class GiteaRepoStore:
-    """Repos privados en una organización de Gitea, vía su API REST."""
-
     def __init__(self, url: str, token: str, org: str) -> None:
         self.org = org
         self.http = httpx.AsyncClient(
@@ -105,6 +123,7 @@ class GiteaRepoStore:
             timeout=30,
         )
         self.web = url.rstrip("/")
+        self.token = token
 
     async def ensure_repo(self, req_id: int, title: str) -> str:
         resp = await self.http.post(
@@ -122,7 +141,9 @@ class GiteaRepoStore:
         return f"{self.web}/{self.org}/{repo_name(req_id)}"
 
     async def _sha(self, req_id: int, path: str) -> str | None:
-        resp = await self.http.get(f"/repos/{self.org}/{repo_name(req_id)}/contents/{path}")
+        resp = await self.http.get(
+            f"/repos/{self.org}/{repo_name(req_id)}/contents/{safe_repo_path(path)}"
+        )
         return resp.json().get("sha") if resp.status_code == 200 else None
 
     async def write_files(
@@ -130,6 +151,7 @@ class GiteaRepoStore:
     ) -> str:
         changes = []
         for path, content in files.items():
+            safe_repo_path(path)
             sha = await self._sha(req_id, path)
             changes.append(
                 {
@@ -151,8 +173,22 @@ class GiteaRepoStore:
         resp.raise_for_status()
         return str(resp.json()["commit"]["sha"])
 
+    def clone_url(self, req_id: int) -> str:
+        return f"{self.web}/{self.org}/{repo_name(req_id)}.git"
+
+    def git_auth_env(self) -> dict[str, str]:
+        return {
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": f"http.{self.web}/.extraHeader",
+            "GIT_CONFIG_VALUE_0": f"Authorization: token {self.token}",
+        }
+
     async def read_file(self, req_id: int, path: str) -> str | None:
-        resp = await self.http.get(f"/repos/{self.org}/{repo_name(req_id)}/raw/{path}")
+        try:
+            safe = safe_repo_path(path)
+        except ValueError:
+            return None
+        resp = await self.http.get(f"/repos/{self.org}/{repo_name(req_id)}/raw/{safe}")
         return resp.text if resp.status_code == 200 else None
 
 

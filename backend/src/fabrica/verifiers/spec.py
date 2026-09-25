@@ -1,9 +1,8 @@
-"""Verifica que la spec sea construible: objetos Z válidos y aseveraciones ejecutables."""
-
 from __future__ import annotations
 
 from typing import Any
 
+from fabrica.sap.adt_xml import OBJECT_PATHS
 from fabrica.verifiers.base import Verification
 
 
@@ -27,6 +26,10 @@ class SpecVerifier:
                 issues.append(f"Objeto {name} no es de cliente (Z/Y)")
             if not package.upper().startswith(self.allowed):
                 issues.append(f"Paquete {package} no permitido")
+            kind = str(obj.get("type", "")).upper()
+            if kind not in OBJECT_PATHS:
+                supported = ", ".join(OBJECT_PATHS)
+                issues.append(f"Tipo {kind or '?'} de {name} no soportado ({supported})")
         if not assertions:
             issues.append("Sin aseveraciones verificables: no se podría probar")
         for a in assertions:

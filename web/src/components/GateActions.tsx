@@ -1,9 +1,11 @@
 import { useState } from "react";
 
-import type { Identity, Outcome, Requirement, Stage } from "../types";
+import type { Session } from "../auth";
+import { errorText } from "../errors";
+import type { Outcome, Requirement, Stage } from "../types";
 
 interface Props {
-  who: Identity;
+  session: Session;
   requirement: Requirement;
   stage: Stage | undefined;
   onDecide: (outcome: Outcome, comment: string) => Promise<void>;
@@ -12,8 +14,7 @@ interface Props {
 
 const DISCARD_ROLES = ["admin", "lider"];
 
-/** Acciones humanas: solo se muestran si el rol actual puede tomarlas. */
-export function GateActions({ who, requirement, stage, onDecide, onResume }: Props) {
+export function GateActions({ session, requirement, stage, onDecide, onResume }: Props) {
   const [comment, setComment] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -23,19 +24,23 @@ export function GateActions({ who, requirement, stage, onDecide, onResume }: Pro
       await action();
       setComment("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorText(e));
     }
   };
 
   const isGate = requirement.state === "waiting_gate" && stage?.kind === "gate";
-  const canDecide = isGate && stage.roles.includes(who.role);
-  const canDiscard = requirement.state !== "done" && DISCARD_ROLES.includes(who.role);
+  const canDecide = isGate && stage.roles.includes(session.role);
+  const canDiscard = requirement.state !== "done" && DISCARD_ROLES.includes(session.role);
   const blocked = requirement.state === "blocked";
 
   if (!isGate && !canDiscard && !blocked) return null;
 
   return (
-    <div className="gate">
+    <div className="card gate">
+      {isGate && canDecide && (
+        <strong>Te toca decidir en {stage.label}</strong>
+      )}
+      {blocked && <strong>⛔ La etapa está en pausa: revisa la conversación y reintenta</strong>}
       {isGate && !canDecide && (
         <p className="muted">
           Espera decisión de: <strong>{stage.roles.join(" o ")}</strong>
@@ -52,13 +57,13 @@ export function GateActions({ who, requirement, stage, onDecide, onResume }: Pro
         {canDecide && (
           <>
             <button onClick={() => run(() => onDecide("approve", comment))}>✅ Aprobar</button>
-            <button className="secondary" onClick={() => run(() => onDecide("reject", comment))}>
+            <button className="outline" onClick={() => run(() => onDecide("reject", comment))}>
               ↩️ Devolver
             </button>
           </>
         )}
         {blocked && (
-          <button className="secondary" onClick={() => run(onResume)}>
+          <button className="outline" onClick={() => run(onResume)}>
             ▶ Reintentar etapa
           </button>
         )}

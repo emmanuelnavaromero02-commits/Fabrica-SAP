@@ -1,5 +1,3 @@
-"""Motor y sesiones asíncronas (Postgres en producción, SQLite en local y pruebas)."""
-
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
@@ -20,7 +18,6 @@ _factory: async_sessionmaker[AsyncSession] | None = None
 
 
 def configure(url: str | None = None) -> None:
-    """Crea el motor. Se puede llamar con otra URL (p. ej. en pruebas)."""
     global _engine, _factory
     settings = get_settings()
     url = url or settings.db_url
@@ -31,7 +28,8 @@ def configure(url: str | None = None) -> None:
 
 
 async def init_db() -> None:
-    """Crea las tablas. En la beta reemplaza a las migraciones (Alembic queda pendiente)."""
+    if not get_settings().auto_schema:
+        return
     if _engine is None:
         configure()
     assert _engine is not None
@@ -41,7 +39,6 @@ async def init_db() -> None:
 
 @asynccontextmanager
 async def session_scope() -> AsyncIterator[AsyncSession]:
-    """Sesión con commit al salir y rollback si hay error."""
     if _factory is None:
         configure()
     assert _factory is not None
@@ -55,13 +52,11 @@ async def session_scope() -> AsyncIterator[AsyncSession]:
 
 
 async def dispose() -> None:
-    """Cierra las conexiones (al apagar el proceso o al terminar una prueba)."""
     if _engine is not None:
         await _engine.dispose()
 
 
 async def reset_db() -> None:
-    """Borra y recrea las tablas. Solo para pruebas."""
     if _engine is None:
         configure()
     assert _engine is not None

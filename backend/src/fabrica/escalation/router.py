@@ -1,10 +1,3 @@
-"""Router con escalamiento: empieza en el nivel más barato viable y sube cuando falla.
-
-Cada intento pasa por un verificador automático. Si falla, el siguiente intento
-(del mismo nivel o del superior) recibe el paquete de relevo con los errores.
-Si se agotan los niveles o el presupuesto, se escala a una persona.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
@@ -14,6 +7,8 @@ from fabrica.blackboard.service import Board
 from fabrica.catalog import ModelCatalog, ModelSpec, model_catalog
 from fabrica.db.models import Attempt, MessageKind
 from fabrica.escalation.handoff import AttemptRecord, Handoff
+from fabrica.escalation.learning import learned_tiers, pass_rates
+from fabrica.knowledge.lessons import record_lessons, relevant_lessons, render_lessons
 from fabrica.llm.base import LLMError, LLMRequest
 from fabrica.llm.gateway import ModelGateway
 from fabrica.verifiers.base import Verification, Verifier
@@ -39,7 +34,7 @@ class EscalationRouter:
 
     def _pick(self, tier: str, attempt: int, avoid: str | None) -> ModelSpec:
         models = self.catalog.tiers[tier].models
-        if avoid:  # revisión cruzada: nunca el mismo proveedor que escribió
+        if avoid:
             others = [m for m in models if m.provider != avoid]
             models = others or models
         return models[attempt % len(models)]
@@ -60,9 +55,10 @@ class EscalationRouter:
     ) -> RouterOutcome:
         policy = self.catalog.policy(activity)
         handoff = Handoff(activity)
-        base_prompt = request.prompt
+        tiers = await self._tiers(req_id, activity)
+        base_prompt = request.prompt + await self._lessons(activity, request.prompt)
 
-        for tier in policy.tiers():
+        for tier in tiers:
             for n in range(policy.attempts):
                 if await self._over_budget(req_id):
                     return await self._to_human(
@@ -94,6 +90,7 @@ class EscalationRouter:
                     )
                 )
                 if verification.passed:
+                    await self._learn(req_id, activity, handoff)
                     await self.board.post(
                         req_id,
                         thread=activity,
@@ -102,6 +99,7 @@ class EscalationRouter:
                         body=f"{activity} aprobado por verificación ({spec.model})",
                         data={"tier": tier, "evidence": verification.evidence},
                     )
+                    await self.board.checkpoint()
                     return RouterOutcome(True, output, tier, spec.provider, [])
 
                 handoff.add(AttemptRecord(tier, spec.model, output, verification.issues))
@@ -114,8 +112,9 @@ class EscalationRouter:
                     recipient=f"{agent}@{tier}",
                     data={"issues": verification.issues},
                 )
+                await self.board.checkpoint()
 
-            if tier != policy.tiers()[-1]:
+            if tier != tiers[-1]:
                 await self.board.post(
                     req_id,
                     thread=activity,
@@ -126,13 +125,49 @@ class EscalationRouter:
 
         return await self._to_human(req_id, activity, agent, handoff, "niveles agotados")
 
+    async def _tiers(self, req_id: int, activity: str) -> list[str]:
+        policy = self.catalog.policy(activity)
+        rates = await pass_rates(self.board.s, activity)
+        tiers = learned_tiers(policy, self.catalog.learning, rates)
+        if tiers[0] != policy.start:
+            await self.board.post(
+                req_id,
+                thread=activity,
+                sender="router",
+                kind=MessageKind.INFO,
+                body=f"{activity} inicia en {tiers[0]}: el historial de {policy.start} no alcanza "
+                f"la tasa mínima de éxito",
+                data={"historial": {t: list(v) for t, v in rates.items()}},
+            )
+        return tiers
+
+    async def _lessons(self, activity: str, context: str) -> str:
+        lessons = await relevant_lessons(self.board.s, activity, context)
+        for lesson in lessons:
+            lesson.uses += 1
+        return render_lessons(lessons)
+
+    async def _learn(self, req_id: int, activity: str, handoff: Handoff) -> None:
+        issues = [issue for record in handoff.history for issue in record.issues]
+        if not issues:
+            return
+        req = await self.board.requirement(req_id)
+        await record_lessons(
+            self.board.s,
+            activity=activity,
+            issues=[i for i in issues if not i.startswith("[proveedor]")],
+            requirement_id=req_id,
+            capability=req.capability,
+        )
+
     async def _attempt(
         self, spec: ModelSpec, tier: str, request: LLMRequest, verifier: Verifier
     ) -> tuple[Verification, dict[str, Any] | None, float, tuple[int, int]]:
         try:
             res = await self.gateway.call(spec, request, tier=tier)
         except LLMError as exc:
-            return Verification(False, [f"[proveedor] {exc}"]), None, 0.0, (0, 0)
+            spent = (exc.tokens_in, exc.tokens_out)
+            return Verification(False, [f"[proveedor] {exc}"]), None, spec.cost(*spent), spent
         usage = (res.result.tokens_in, res.result.tokens_out)
         if res.result.refused:
             return (
@@ -143,7 +178,11 @@ class EscalationRouter:
             )
         if res.result.data is None:
             return Verification(False, ["[formato] respuesta sin JSON"]), None, res.cost_usd, usage
-        return await verifier.verify(res.result.data), res.result.data, res.cost_usd, usage
+        try:
+            verification = await verifier.verify(res.result.data)
+        except Exception as exc:
+            verification = Verification(False, [f"[verificador] {type(exc).__name__}: {exc}"])
+        return verification, res.result.data, res.cost_usd, usage
 
     async def _to_human(
         self, req_id: int, activity: str, agent: str, handoff: Handoff, reason: str

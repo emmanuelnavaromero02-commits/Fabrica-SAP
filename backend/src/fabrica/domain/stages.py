@@ -1,5 +1,3 @@
-"""Reglas de la máquina de etapas: transiciones y permisos de las compuertas."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -11,8 +9,7 @@ from fabrica.db.models import RunState
 Outcome = Literal["approve", "reject", "discard"]
 
 
-class TransitionError(ValueError):
-    """La decisión no es válida para la etapa o el rol."""
+class TransitionError(ValueError): ...
 
 
 @dataclass(frozen=True)
@@ -32,7 +29,6 @@ def state_for(stage_key: str, machine: StageMachine | None = None) -> RunState:
 
 
 def advance(stage_key: str, machine: StageMachine | None = None) -> Transition:
-    """Siguiente etapa cuando una etapa automática termina bien."""
     machine = machine or stage_machine()
     stage = machine.get(stage_key)
     if stage.kind is not StageKind.AUTO or stage.next is None:
@@ -43,7 +39,6 @@ def advance(stage_key: str, machine: StageMachine | None = None) -> Transition:
 def decide(
     stage_key: str, outcome: Outcome, role: str, machine: StageMachine | None = None
 ) -> Transition:
-    """Aplica una decisión humana y devuelve la nueva etapa."""
     machine = machine or stage_machine()
     stage = machine.get(stage_key)
 

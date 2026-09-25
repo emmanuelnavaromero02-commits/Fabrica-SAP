@@ -1,12 +1,14 @@
-# Copiar a ~/.codex/config.toml (o .codex/config.toml del proyecto) para que Codex
-# use los mismos MCP que Claude Code. Ajusta la ruta del repositorio.
-
 [mcp_servers.fabrica]
 command = "uv"
 args = ["run", "--project", "/ruta/a/Fabrica-SAP/backend", "fabrica-mcp-fabrica"]
-env = { FABRICA_MCP_USER = "consultor" }
+env = { FABRICA_MCP_USER = "consultor", FABRICA_DATABASE_URL = "postgresql+asyncpg://fabrica:fabrica@localhost:5432/fabrica", FABRICA_AUTO_SCHEMA = "false" }
 
 [mcp_servers.sap]
 command = "uv"
 args = ["run", "--project", "/ruta/a/Fabrica-SAP/backend", "fabrica-mcp-sap"]
-env = { FABRICA_MCP_USER = "consultor" }
+env = { FABRICA_MCP_USER = "consultor", FABRICA_DATABASE_URL = "postgresql+asyncpg://fabrica:fabrica@localhost:5432/fabrica", FABRICA_AUTO_SCHEMA = "false" }
+
+[mcp_servers.conocimiento]
+command = "uv"
+args = ["run", "--project", "/ruta/a/Fabrica-SAP/backend", "fabrica-mcp-conocimiento"]
+env = { FABRICA_MCP_USER = "consultor", FABRICA_DATABASE_URL = "postgresql+asyncpg://fabrica:fabrica@localhost:5432/fabrica", FABRICA_AUTO_SCHEMA = "false" }

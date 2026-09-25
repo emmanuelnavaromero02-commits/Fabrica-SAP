@@ -1,10 +1,3 @@
-"""Proveedor Codex: ejecuta `codex exec` en un directorio de trabajo local.
-
-Codex corre en NUESTRA infraestructura, así que puede usar los MCP internos
-(incluido el Puente SAP) configurados en ~/.codex/config.toml del contenedor.
-Flags según `codex exec --help` (verificar al actualizar la CLI).
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -15,6 +8,7 @@ from pathlib import Path
 from fabrica.catalog import ModelSpec
 from fabrica.config import get_settings
 from fabrica.llm.base import LLMError, LLMRequest, LLMResult
+from fabrica.workspace.sandbox import CONTAINER_IO, CONTAINER_WORK, Sandbox, configured_sandbox
 
 _TIMEOUT_S = 1800
 
@@ -22,29 +16,32 @@ _TIMEOUT_S = 1800
 class CodexProvider:
     name = "codex"
 
-    def __init__(self, binary: str | None = None) -> None:
+    def __init__(self, binary: str | None = None, sandbox: Sandbox | None = None) -> None:
         self.binary = binary or get_settings().codex_bin
+        self.sandbox = sandbox or configured_sandbox()
 
-    def _command(self, spec: ModelSpec, workdir: Path, out: Path, schema: Path | None) -> list[str]:
+    def command(self, spec: ModelSpec, workdir: Path, io: Path, with_schema: bool) -> list[str]:
+        work = self.sandbox.inside(workdir, CONTAINER_WORK)
+        io_dir = self.sandbox.inside(io, CONTAINER_IO)
         cmd = [
             self.binary,
             "exec",
             "--model",
             spec.model,
             "--cd",
-            str(workdir),
+            work,
             "--sandbox",
             "workspace-write",
             "--skip-git-repo-check",
             "--json",
             "--output-last-message",
-            str(out),
+            f"{io_dir}/last_message.txt",
         ]
         if spec.effort:
             cmd += ["-c", f"model_reasoning_effort={spec.effort}"]
-        if schema:
-            cmd += ["--output-schema", str(schema)]
-        return cmd
+        if with_schema:
+            cmd += ["--output-schema", f"{io_dir}/schema.json"]
+        return self.sandbox.wrap(cmd, workdir, io)
 
     async def complete(self, spec: ModelSpec, request: LLMRequest) -> LLMResult:
         with tempfile.TemporaryDirectory(prefix="codex-") as tmp:
@@ -59,7 +56,7 @@ class CodexProvider:
             prompt = f"{request.system}\n\n{request.prompt}"
             try:
                 proc = await asyncio.create_subprocess_exec(
-                    *self._command(spec, workdir, out, schema),
+                    *self.command(spec, workdir, tmp_path, schema is not None),
                     prompt,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
@@ -70,24 +67,25 @@ class CodexProvider:
             except TimeoutError as exc:
                 raise LLMError("Codex excedió el tiempo máximo") from exc
 
+            tokens_in, tokens_out = _usage_from_events(stdout.decode())
             if proc.returncode != 0:
                 raise LLMError(
-                    f"Codex terminó con código {proc.returncode}: {stderr.decode()[-500:]}"
+                    f"Codex terminó con código {proc.returncode}: {stderr.decode()[-500:]}",
+                    tokens_in,
+                    tokens_out,
                 )
 
             text = out.read_text(encoding="utf-8") if out.exists() else ""
-            tokens_in, tokens_out = _usage_from_events(stdout.decode())
             data = None
             if request.schema:
                 try:
                     data = json.loads(text)
                 except json.JSONDecodeError as exc:
-                    raise LLMError("Codex devolvió JSON inválido") from exc
+                    raise LLMError("Codex devolvió JSON inválido", tokens_in, tokens_out) from exc
             return LLMResult(text, data, tokens_in, tokens_out)
 
 
 def _usage_from_events(jsonl: str) -> tuple[int, int]:
-    """Suma el uso reportado en los eventos JSONL de `codex exec --json`."""
     tokens_in = tokens_out = 0
     for line in jsonl.splitlines():
         try:

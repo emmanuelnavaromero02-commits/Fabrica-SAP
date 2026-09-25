@@ -1,17 +1,12 @@
-"""SAP DEV simulado: guarda objetos en disco y aplica chequeos aproximados.
-
-Sirve para probar el ciclo completo (escribir → sintaxis → activar → ATC → pruebas)
-sin tocar ningún SAP. Un puente real (ADT/abap-adt-mcp) implementa el mismo contrato.
-"""
-
 from __future__ import annotations
 
 import json
 import re
+import zlib
 from dataclasses import asdict
 from pathlib import Path
 
-from fabrica.sap.bridge import Assertion, CheckResult, Finding, SapObject
+from fabrica.sap.bridge import Assertion, CheckResult, Finding, SapObject, assertion_findings
 
 _HEADERS = ("REPORT", "PROGRAM", "CLASS", "INTERFACE", "FUNCTION-POOL")
 _ATC_RULES: list[tuple[str, str, str]] = [
@@ -22,11 +17,12 @@ _ATC_RULES: list[tuple[str, str, str]] = [
 ]
 
 
-class SimulatedSap:
-    def __init__(self, root: Path, system: str = "SIM-DEV") -> None:
+class FakeSapSystem:
+    def __init__(self, root: Path, system: str = "PRUEBA-DEV") -> None:
         self.system = system
         self.root = root / system
         self.root.mkdir(parents=True, exist_ok=True)
+        self.released: set[str] = set()
 
     def _path(self, name: str) -> Path:
         return self.root / f"{name.upper()}.json"
@@ -75,12 +71,14 @@ class SimulatedSap:
         ]
         return CheckResult(findings)
 
+    async def transport_is_open(self, number: str) -> bool:
+        return number not in self.released
+
+    async def ensure_transport(self, obj: SapObject, text: str, current: str | None) -> str:
+        if current:
+            return current
+        seed = f"{obj.package}:{text}:{len(self.released)}"
+        return f"DEVK9{zlib.crc32(seed.encode()) % 100000:05d}"
+
     async def run_unit(self, name: str, assertions: list[Assertion]) -> CheckResult:
-        source = (await self._source(name)).lower()
-        return CheckResult(
-            [
-                Finding("unit", "error", f"{a.id} no se cumple: {a.description}")
-                for a in assertions
-                if a.must_contain.lower() not in source
-            ]
-        )
+        return CheckResult(assertion_findings(await self._source(name), assertions))

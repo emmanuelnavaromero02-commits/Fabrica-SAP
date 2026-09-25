@@ -1,10 +1,3 @@
-"""Trabajo de los agentes en cada etapa automática.
-
-Cada función recibe el tablero de una transacción y devuelve qué pasó:
-- advance: la etapa terminó bien → pasa a la siguiente.
-- blocked: faltan respuestas del cliente o una persona debe intervenir.
-"""
-
 from __future__ import annotations
 
 import json
@@ -16,14 +9,18 @@ from fabrica.blackboard.service import Board
 from fabrica.config import get_settings
 from fabrica.db.models import MessageKind, Requirement
 from fabrica.escalation.router import EscalationRouter
+from fabrica.estimation.step import estimate_file, estimate_requirement
 from fabrica.git.repo import RepoStore
+from fabrica.knowledge.standards import standards
 from fabrica.llm.base import LLMRequest
 from fabrica.llm.gateway import ModelGateway
 from fabrica.sap.bridge import Assertion
-from fabrica.sap.factory import bridge_for
+from fabrica.sap.factory import sap_for
+from fabrica.sap.systems import SapNotConfigured
 from fabrica.verifiers.abap import AbapVerifier
 from fabrica.verifiers.base import Verification
 from fabrica.verifiers.spec import SpecVerifier
+from fabrica.workspace.manager import WorkspaceManager
 
 SPEC_JSON = "diseno/spec.json"
 
@@ -35,8 +32,6 @@ class StepResult:
 
 
 class _Check:
-    """Verificador a partir de una función simple sobre la salida."""
-
     def __init__(self, fn: Any) -> None:
         self.fn = fn
 
@@ -74,7 +69,6 @@ class Steps:
         for path in files:
             await self.board.record_artifact(req.id, path, commit, author)
 
-    # ── Recepción ──────────────────────────────────────────────────────────
     async def recepcion(self, req: Requirement) -> StepResult:
         req.repo_url = await self.repos.ensure_repo(req.id, req.title)
         context = await _context(self.board, req)
@@ -125,30 +119,35 @@ class Steps:
         await self._save(req, inputs, "Recepción: insumos y análisis", roles.ANALISTA.name)
         return StepResult("advance")
 
-    # ── Diseño ─────────────────────────────────────────────────────────────
     async def diseno(self, req: Requirement) -> StepResult:
         allowed = get_settings().sap_allowed_packages
         out = await self.router.run(
             req.id,
             "disenar_spec",
-            _request(roles.ARQUITECTO, await _context(self.board, req)),
+            _request(
+                roles.ARQUITECTO,
+                await _context(self.board, req) + standards().render(req.capability),
+            ),
             SpecVerifier(allowed),
             agent=roles.ARQUITECTO.name,
         )
         if not out.passed or out.output is None:
             return StepResult("blocked", "El diseño requiere una persona")
+        estimate = await estimate_requirement(self.router, self.board, req, out.output)
+        if estimate is None:
+            return StepResult("blocked", "La estimación requiere una persona")
         await self._save(
             req,
             {
                 "diseno/spec.md": out.output["spec_markdown"],
                 SPEC_JSON: json.dumps(out.output, ensure_ascii=False, indent=2),
+                "diseno/estimacion.json": estimate_file(estimate),
             },
-            "Diseño: especificación y aseveraciones",
+            "Diseño: especificación, aseveraciones y estimación",
             roles.ARQUITECTO.name,
         )
         return StepResult("advance")
 
-    # ── Construcción ───────────────────────────────────────────────────────
     async def construccion(self, req: Requirement) -> StepResult:
         raw = await self.repos.read_file(req.id, SPEC_JSON)
         if raw is None:
@@ -156,22 +155,25 @@ class Steps:
         spec = json.loads(raw)
         main = spec["objects"][0]
         assertions = [Assertion(**a) for a in spec["assertions"]]
-        verifier = AbapVerifier(
-            bridge_for(self.board, req.id, roles.DESARROLLADOR.name),
-            main_object=main,
-            assertions=assertions,
-            transport=f"FABK9{req.id:05d}",
-        )
+        try:
+            sap = await sap_for(self.board, req.id, roles.DESARROLLADOR.name)
+        except SapNotConfigured as exc:
+            return StepResult("blocked", str(exc))
+        verifier = AbapVerifier(sap, main_object=main, assertions=assertions)
         prompt = (
             f"{await _context(self.board, req)}\n\n## Spec\n{spec['spec_markdown']}\n\n"
             f"Objeto principal: {main['name']}\n"
             f"Aseveraciones: {json.dumps(spec['assertions'], ensure_ascii=False)}"
+            f"{standards().render(req.capability)}"
         )
 
+        workspace = await WorkspaceManager().prepare(
+            req.id, self.repos.clone_url(req.id), self.repos.git_auth_env()
+        )
         dev = await self.router.run(
             req.id,
             "implementar",
-            _request(roles.DESARROLLADOR, prompt),
+            _request(roles.DESARROLLADOR, prompt, workdir=str(workspace)),
             verifier,
             agent=roles.DESARROLLADOR.name,
         )

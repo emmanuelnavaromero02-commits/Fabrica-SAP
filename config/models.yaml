@@ -1,42 +1,35 @@
-# Catálogo de modelos por nivel (N1 → N4).
-# El router empieza cada actividad en su nivel inicial y escala al siguiente
-# cuando los verificadores automáticos rechazan el resultado.
-#
-# provider: anthropic | openai | codex | mock
-# Precios en USD por millón de tokens (entrada / salida).
-# Los IDs de OpenAI (gpt-6-*) salieron el 22-sep-2026: confirmarlos en
-# https://developers.openai.com/codex/models antes de producción.
-# Los precios de OpenAI son PROVISIONALES (placeholder): cámbialos por los oficiales.
-
 tiers:
   N1:
     description: Volumen — borradores, clasificación, esqueletos
     models:
       - { provider: anthropic, model: claude-haiku-4-5, price_in: 1.0, price_out: 5.0 }
-      - { provider: openai, model: gpt-6-luna, effort: low, price_in: 0.5, price_out: 4.0 }
+      - { provider: openai, model: gpt-6-luna, effort: low, price_in: 0.1, price_out: 0.5 }
   N2:
     description: Implementación — ABAP desde la spec
     models:
-      - { provider: codex, model: gpt-6-sol, effort: medium, price_in: 1.5, price_out: 12.0 }
+      - { provider: codex, model: gpt-6-sol, effort: medium, price_in: 2.0, price_out: 10.0 }
       - { provider: anthropic, model: claude-sonnet-5, effort: high, price_in: 2.0, price_out: 10.0 }
   N3:
     description: Cierre y pulido — termina lo que N2 no logró
     models:
       - { provider: anthropic, model: claude-opus-5, effort: xhigh, price_in: 5.0, price_out: 25.0, fallbacks: true }
-      - { provider: codex, model: gpt-6-sol, effort: high, price_in: 1.5, price_out: 12.0 }
+      - { provider: codex, model: gpt-6-sol, effort: high, price_in: 2.0, price_out: 10.0 }
   N4:
     description: Último recurso antes de una persona
     models:
       - { provider: anthropic, model: claude-fable-5-1, effort: high, price_in: 10.0, price_out: 50.0, fallbacks: true }
 
-# Actividad → nivel inicial, intentos por nivel y si el revisor debe ser de otro proveedor.
 activities:
   clasificar:      { start: N1, max_tier: N2, attempts: 1 }
   analizar:        { start: N1, max_tier: N3, attempts: 1 }
-  disenar_spec:    { start: N3, max_tier: N4, attempts: 2 }   # sin verificador fuerte → empieza arriba
+  disenar_spec:    { start: N3, max_tier: N4, attempts: 2 }
   implementar:     { start: N2, max_tier: N4, attempts: 2 }
+  estimar:         { start: N2, max_tier: N3, attempts: 1 }
   revisar:         { start: N3, max_tier: N3, attempts: 1, cross_vendor: true }
   documentar:      { start: N1, max_tier: N2, attempts: 1 }
 
-# Tope de gasto por requisito; si se supera, escala a una persona.
 budget_usd_per_requirement: 25.0
+
+learning:
+  min_samples: 5
+  min_pass_rate: 0.3

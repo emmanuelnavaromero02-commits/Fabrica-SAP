@@ -1,0 +1,49 @@
+.shell { display: grid; grid-template-columns: 232px 1fr; min-height: 100vh; }
+.nav {
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  padding: 18px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+.brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px; font-weight: 700; font-size: 1.05rem; }
+.brand-mark {
+  width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-ink); font-size: 1rem;
+}
+.nav button { justify-content: flex-start; width: 100%; background: transparent; color: var(--ink-2); font-weight: 500; }
+.nav button:hover { background: var(--surface-2); color: var(--ink); }
+.nav button.active { background: var(--accent-soft); color: var(--ink); font-weight: 600; }
+.nav .spacer { flex: 1; }
+.nav .nav-foot { border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 8px; }
+
+.main { display: flex; flex-direction: column; min-width: 0; }
+.topbar {
+  display: flex; align-items: center; gap: 12px; padding: 14px 24px;
+  border-bottom: 1px solid var(--line); background: var(--surface); position: sticky; top: 0; z-index: 5;
+}
+.topbar h1 { font-size: 1.15rem; }
+.topbar .grow { flex: 1; }
+.topbar .search { max-width: 320px; }
+.page { padding: 24px; display: grid; gap: 20px; }
+
+.split { display: grid; grid-template-columns: minmax(280px, 340px) 1fr; gap: 20px; align-items: start; }
+.identity { display: flex; gap: 8px; align-items: center; }
+.identity input { width: 140px; }
+.identity select { width: 170px; }
+.user { font-weight: 600; white-space: nowrap; }
+
+.center { text-align: center; margin-top: 20vh; }
+.login { display: grid; gap: 16px; justify-items: center; margin-top: 18vh; }
+
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; }
+  .nav { position: static; height: auto; flex-direction: row; flex-wrap: wrap; }
+  .nav .spacer, .brand { display: none; }
+  .split { grid-template-columns: 1fr; }
+  .topbar { flex-wrap: wrap; }
+}

@@ -1,9 +1,3 @@
-"""Definición de los agentes: rol, actividad, instrucciones y formato de salida.
-
-Los esquemas son JSON Schema estrictos (válidos para Claude y OpenAI): todos los
-campos requeridos y sin propiedades extra.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -71,12 +65,41 @@ ARQUITECTO = AgentRole(
             "spec_markdown": _STR,
             "objects": {
                 "type": "array",
-                "items": _obj({"name": _STR, "type": _STR, "package": _STR}),
+                "items": _obj(
+                    {
+                        "name": _STR,
+                        "type": {"type": "string", "enum": ["PROG", "CLAS", "INTF"]},
+                        "package": _STR,
+                    }
+                ),
             },
             "assertions": {
                 "type": "array",
                 "items": _obj({"id": _STR, "description": _STR, "must_contain": _STR}),
             },
+        }
+    ),
+)
+
+ESTIMADOR = AgentRole(
+    "estimador",
+    "estimar",
+    f"{_COMMON} Eres líder técnico SAP. Asigna una talla (XS, S, M, L, XL) a cada objeto de la "
+    "spec según su esfuerzo real de construcción y pruebas. Justifica cada talla y lista las "
+    "asunciones. Las horas las calcula la fábrica a partir de las tallas.",
+    _obj(
+        {
+            "items": {
+                "type": "array",
+                "items": _obj(
+                    {
+                        "object": _STR,
+                        "size": {"type": "string", "enum": ["XS", "S", "M", "L", "XL"]},
+                        "rationale": _STR,
+                    }
+                ),
+            },
+            "assumptions": _STRS,
         }
     ),
 )

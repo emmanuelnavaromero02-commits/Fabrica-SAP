@@ -1,5 +1,3 @@
-"""Operaciones sobre el tablero: mensajes tipados, decisiones, intentos y auditoría."""
-
 from __future__ import annotations
 
 from typing import Any
@@ -12,18 +10,21 @@ from fabrica.db.models import (
     Artifact,
     Attempt,
     Decision,
+    Estimate,
     Message,
     MessageKind,
     Requirement,
     SapCall,
+    Transport,
 )
 
 
 class Board:
-    """Fachada del tablero para una sesión de base de datos."""
-
     def __init__(self, session: AsyncSession) -> None:
         self.s = session
+
+    async def checkpoint(self) -> None:
+        await self.s.commit()
 
     async def requirement(self, req_id: int) -> Requirement:
         req = await self.s.get(Requirement, req_id, options=[selectinload(Requirement.documents)])
@@ -71,8 +72,14 @@ class Board:
 
     async def answer(self, req_id: int, message_id: int, author: str, body: str) -> Message:
         question = await self.s.get(Message, message_id)
-        if question is None or question.requirement_id != req_id:
+        if (
+            question is None
+            or question.requirement_id != req_id
+            or question.kind != MessageKind.PREGUNTA
+        ):
             raise LookupError("Pregunta no encontrada")
+        if question.resolved:
+            raise ValueError("La pregunta ya fue respondida")
         question.resolved = True
         return await self.post(
             req_id,
@@ -119,3 +126,38 @@ class Board:
     async def audit_sap(self, call: SapCall) -> None:
         self.s.add(call)
         await self.s.flush()
+
+    async def transport(self, req_id: int, system: str) -> Transport | None:
+        q = (
+            select(Transport)
+            .where(
+                Transport.requirement_id == req_id,
+                Transport.system == system,
+                Transport.status == "modificable",
+            )
+            .order_by(Transport.id.desc())
+        )
+        return (await self.s.scalars(q)).first()
+
+    async def add_transport(self, req_id: int, system: str, number: str) -> Transport:
+        transport = Transport(requirement_id=req_id, system=system, number=number, objects=[])
+        self.s.add(transport)
+        await self.s.flush()
+        return transport
+
+    async def transports(self, req_id: int) -> list[Transport]:
+        q = select(Transport).where(Transport.requirement_id == req_id).order_by(Transport.id)
+        return list((await self.s.scalars(q)).all())
+
+    async def latest_estimate(self, req_id: int) -> Estimate | None:
+        q = select(Estimate).where(Estimate.requirement_id == req_id).order_by(Estimate.id.desc())
+        return (await self.s.scalars(q)).first()
+
+    async def sap_calls(self, req_id: int, limit: int = 200) -> list[SapCall]:
+        q = (
+            select(SapCall)
+            .where(SapCall.requirement_id == req_id)
+            .order_by(SapCall.id.desc())
+            .limit(limit)
+        )
+        return list(reversed((await self.s.scalars(q)).all()))

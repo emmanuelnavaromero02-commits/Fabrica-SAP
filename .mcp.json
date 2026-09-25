@@ -2,13 +2,45 @@
   "mcpServers": {
     "fabrica": {
       "command": "uv",
-      "args": ["run", "--project", "backend", "fabrica-mcp-fabrica"],
-      "env": { "FABRICA_MCP_USER": "consultor" }
+      "args": [
+        "run",
+        "--project",
+        "backend",
+        "fabrica-mcp-fabrica"
+      ],
+      "env": {
+        "FABRICA_MCP_USER": "${USER}",
+        "FABRICA_DATABASE_URL": "postgresql+asyncpg://fabrica:fabrica@localhost:5432/fabrica",
+        "FABRICA_AUTO_SCHEMA": "false"
+      }
     },
     "sap": {
       "command": "uv",
-      "args": ["run", "--project", "backend", "fabrica-mcp-sap"],
-      "env": { "FABRICA_MCP_USER": "consultor" }
+      "args": [
+        "run",
+        "--project",
+        "backend",
+        "fabrica-mcp-sap"
+      ],
+      "env": {
+        "FABRICA_MCP_USER": "${USER}",
+        "FABRICA_DATABASE_URL": "postgresql+asyncpg://fabrica:fabrica@localhost:5432/fabrica",
+        "FABRICA_AUTO_SCHEMA": "false"
+      }
+    },
+    "conocimiento": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "backend",
+        "fabrica-mcp-conocimiento"
+      ],
+      "env": {
+        "FABRICA_MCP_USER": "${USER}",
+        "FABRICA_DATABASE_URL": "postgresql+asyncpg://fabrica:fabrica@localhost:5432/fabrica",
+        "FABRICA_AUTO_SCHEMA": "false"
+      }
     }
   }
 }

@@ -1,17 +1,18 @@
-"""MCP `fabrica`: el tablero para agentes y personas (Claude Code, Codex, VS Code)."""
-
 from __future__ import annotations
 
 from typing import Any
 
 from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 from sqlalchemy import select
 
 from fabrica.blackboard.service import Board
 from fabrica.catalog import StageKind, stage_machine
 from fabrica.db.models import MessageKind, Requirement, RunState
-from fabrica.db.session import init_db, session_scope
-from fabrica.mcp_servers.common import actor, serve
+from fabrica.domain.schemas import Identity
+from fabrica.mcp_servers.common import actor, auth_kwargs, mcp_session, serve
+from fabrica.pipeline import commands
+from fabrica.pipeline.runner import build_runner
 
 server = MCPServer(
     name="fabrica",
@@ -19,6 +20,7 @@ server = MCPServer(
         "Tablero de la fábrica SAP. Lee requisitos y conversaciones, publica mensajes "
         "tipados. Las decisiones de compuerta NO se toman por aquí: van por el portal."
     ),
+    **auth_kwargs(8101),
 )
 
 _ALLOWED_KINDS = {k.value for k in MessageKind} - {MessageKind.DECISION.value}
@@ -26,10 +28,9 @@ _ALLOWED_KINDS = {k.value for k in MessageKind} - {MessageKind.DECISION.value}
 
 @server.tool(description="Requisitos que esperan a un rol (compuertas) o están bloqueados.")
 async def mi_cola(rol: str) -> list[dict[str, Any]]:
-    await init_db()
     machine = stage_machine()
     gates = {s.key for s in machine.stages if s.kind is StageKind.GATE and rol in s.roles}
-    async with session_scope() as s:
+    async with mcp_session() as s:
         rows = await s.scalars(select(Requirement).where(Requirement.state != RunState.DONE))
         return [
             {"id": r.id, "titulo": r.title, "etapa": r.stage, "estado": r.state}
@@ -40,8 +41,7 @@ async def mi_cola(rol: str) -> list[dict[str, Any]]:
 
 @server.tool(description="Detalle de un requisito con sus documentos y conversación.")
 async def leer_requisito(requisito_id: int) -> dict[str, Any]:
-    await init_db()
-    async with session_scope() as s:
+    async with mcp_session(requisito_id) as s:
         board = Board(s)
         req = await board.requirement(requisito_id)
         return {
@@ -75,9 +75,8 @@ async def enviar_mensaje(
     requisito_id: int, hilo: str, tipo: str, texto: str, para: str | None = None
 ) -> dict[str, Any]:
     if tipo not in _ALLOWED_KINDS:
-        raise ValueError(f"Tipo no permitido: {tipo}. Usa uno de {sorted(_ALLOWED_KINDS)}")
-    await init_db()
-    async with session_scope() as s:
+        raise ToolError(f"Tipo no permitido: {tipo}. Usa uno de {sorted(_ALLOWED_KINDS)}")
+    async with mcp_session(requisito_id) as s:
         msg = await Board(s).post(
             requisito_id,
             thread=hilo,
@@ -89,12 +88,21 @@ async def enviar_mensaje(
         return {"id": msg.id, "hilo": hilo, "tipo": tipo}
 
 
-@server.tool(description="Responde una pregunta abierta del tablero.")
+@server.tool(
+    description="Responde una pregunta abierta del tablero; si era la última, la fábrica reanuda."
+)
 async def responder_pregunta(requisito_id: int, pregunta_id: int, texto: str) -> dict[str, Any]:
-    await init_db()
-    async with session_scope() as s:
-        msg = await Board(s).answer(requisito_id, pregunta_id, actor(), texto)
-        return {"id": msg.id}
+    who = Identity(user=actor(), role="consultor", roles=["consultor"])
+    try:
+        async with mcp_session(requisito_id) as s:
+            unblocked = await commands.answer_question(
+                Board(s), requisito_id, pregunta_id, texto, who
+            )
+    except (LookupError, ValueError) as exc:
+        raise ToolError(str(exc)) from exc
+    if unblocked:
+        await build_runner().kick(requisito_id)
+    return {"pregunta": pregunta_id, "reanudado": unblocked}
 
 
 def run() -> None:

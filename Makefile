@@ -1,37 +1,45 @@
-.PHONY: install api web worker test lint check up down mcp-fabrica mcp-sap
+.PHONY: install dev infra up down logs ps usuario replay test lint check
 
 BACKEND := cd backend &&
+USUARIO ?=
+EMAIL ?=
+ROL ?= funcional
+CASOS ?=
 
-install:            ## Instala backend (uv) y frontend (npm)
+install:
 	$(BACKEND) uv sync --extra dev
 	cd web && npm install
 
-api:                ## API en http://localhost:8000 (modo inline + mock por defecto)
-	$(BACKEND) uv run uvicorn fabrica.api.app:app --reload --port 8000
+dev:
+	./scripts/dev.sh
 
-web:                ## Web en http://localhost:5173
-	cd web && npm run dev
+infra:
+	docker compose up -d --wait postgres temporal keycloak
 
-worker:             ## Worker de Temporal (requiere FABRICA_RUNNER=temporal)
-	$(BACKEND) uv run fabrica-worker
-
-mcp-fabrica:        ## MCP del tablero por stdio
-	$(BACKEND) uv run fabrica-mcp-fabrica
-
-mcp-sap:            ## MCP del Puente SAP por stdio
-	$(BACKEND) uv run fabrica-mcp-sap
-
-test:               ## Pruebas del backend
-	$(BACKEND) uv run pytest -q
-
-lint:               ## Lint, formato y tipos (backend y frontend)
-	$(BACKEND) uv run ruff check src tests && uv run ruff format --check src tests && uv run mypy src
-	cd web && npm run typecheck
-
-check: lint test    ## Todo lo que corre CI
-
-up:                 ## Entorno completo con Docker (Postgres, Temporal, API, worker, web)
-	docker compose up --build
+up:
+	docker compose up -d --build --wait
+	@docker compose ps
 
 down:
 	docker compose down
+
+logs:
+	docker compose logs -f api worker
+
+ps:
+	docker compose ps
+
+usuario:
+	docker compose exec api fabrica-usuario --usuario $(USUARIO) --email $(EMAIL) $(foreach r,$(ROL),--rol $(r))
+
+replay:
+	docker compose exec -T api fabrica-replay /dev/stdin < $(CASOS)
+
+test:
+	$(BACKEND) uv run pytest -q
+
+lint:
+	$(BACKEND) uv run ruff check src tests && uv run ruff format --check src tests && uv run mypy src
+	cd web && npm run typecheck
+
+check: lint test

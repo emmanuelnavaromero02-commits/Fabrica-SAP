@@ -1,5 +1,3 @@
-"""Flujo real en Temporal. Se omite si no se puede iniciar el servidor de desarrollo."""
-
 from __future__ import annotations
 
 import asyncio

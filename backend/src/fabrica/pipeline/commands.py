@@ -1,5 +1,3 @@
-"""Comandos de personas: crear requisitos, responder preguntas, decidir y reanudar."""
-
 from __future__ import annotations
 
 from fabrica.blackboard.service import Board
@@ -39,7 +37,6 @@ async def create_requirement(board: Board, data: RequirementIn, who: Identity) -
 async def answer_question(
     board: Board, req_id: int, message_id: int, body: str, who: Identity
 ) -> bool:
-    """Registra la respuesta. Devuelve True si ya no quedan preguntas y el flujo puede seguir."""
     await board.answer(req_id, message_id, who.user, body)
     req = await board.requirement(req_id)
     if req.state == RunState.BLOCKED and not await board.open_questions(req_id):
@@ -49,7 +46,6 @@ async def answer_question(
 
 
 async def record_decision(board: Board, req_id: int, data: DecisionIn, who: Identity) -> bool:
-    """Aplica la decisión de una compuerta. Devuelve True si hay trabajo automático nuevo."""
     req = await board.requirement(req_id)
     transition = decide(req.stage, data.outcome, who.role)
     await board.record_decision(
@@ -76,7 +72,6 @@ async def record_decision(board: Board, req_id: int, data: DecisionIn, who: Iden
 
 
 async def resume(board: Board, req_id: int, who: Identity) -> bool:
-    """Reintenta una etapa bloqueada después de que una persona intervino."""
     req = await board.requirement(req_id)
     if req.state != RunState.BLOCKED:
         return False

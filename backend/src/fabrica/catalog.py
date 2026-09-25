@@ -1,5 +1,3 @@
-"""Carga tipada de config/models.yaml y config/stages.yaml."""
-
 from __future__ import annotations
 
 from enum import StrEnum
@@ -12,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from fabrica.config import get_settings
 
-Provider = Literal["anthropic", "openai", "codex", "mock"]
+Provider = Literal["anthropic", "openai", "codex"]
 TIER_ORDER = ("N1", "N2", "N3", "N4")
 
 
@@ -44,10 +42,16 @@ class ActivityPolicy(BaseModel):
         return list(TIER_ORDER[lo : hi + 1])
 
 
+class LearningPolicy(BaseModel):
+    min_samples: int = 5
+    min_pass_rate: float = 0.3
+
+
 class ModelCatalog(BaseModel):
     tiers: dict[str, Tier]
     activities: dict[str, ActivityPolicy]
     budget_usd_per_requirement: float = 25.0
+    learning: LearningPolicy = Field(default_factory=LearningPolicy)
 
     def policy(self, activity: str) -> ActivityPolicy:
         return self.activities[activity]

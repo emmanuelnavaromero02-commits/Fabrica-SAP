@@ -1,11 +1,3 @@
-"""Proveedor simulado: permite probar toda la fábrica sin llaves de API.
-
-Comportamiento determinista y pensado para la demo:
-- `analizar` pregunta al cliente si el requisito llega sin documentos.
-- `implementar` en N1/N2 deja un `SELECT *` (lo detecta ATC) y así se ve el
-  escalamiento; desde N3 entrega código limpio usando el paquete de relevo.
-"""
-
 from __future__ import annotations
 
 import json
@@ -25,8 +17,8 @@ def _title(prompt: str) -> str:
     return match.group(1).strip() if match else "Requisito"
 
 
-class MockProvider:
-    name = "mock"
+class FakeProvider:
+    name = "fake"
 
     async def complete(self, spec: ModelSpec, request: LLMRequest) -> LLMResult:
         activity = request.tags.get("activity", "")
@@ -114,8 +106,19 @@ class MockProvider:
             "notes": "Borrador inicial" if weak else "Corregido con el paquete de relevo",
         }
 
+    def _estimar(self, prompt: str, tier: str) -> dict[str, Any]:
+        names = re.findall(r'"name": "([^"]+)"', prompt) or ["Z_REQ"]
+        return {
+            "items": [
+                {"object": n, "size": "M", "rationale": "Reporte con selección y ALV"}
+                for n in names
+            ],
+            "assumptions": ["Datos maestros disponibles en DEV"],
+        }
+
     def _revisar(self, prompt: str, tier: str) -> dict[str, Any]:
-        issues = ["Evitar SELECT *: leer solo campos necesarios"] if "SELECT *" in prompt else []
+        code = prompt.split("## Código", 1)[-1]
+        issues = ["Evitar SELECT *: leer solo campos necesarios"] if "SELECT *" in code else []
         return {"approved": not issues, "objections": issues}
 
     def _documentar(self, prompt: str, tier: str) -> dict[str, Any]:

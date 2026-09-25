@@ -1,9 +1,3 @@
-"""Rutas de requisitos: crear, listar, detalle, preguntas, decisiones y reanudar.
-
-Regla: se hace commit de la transacción ANTES de disparar el motor (`kick`),
-para que el motor siempre lea el estado ya guardado.
-"""
-
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
@@ -19,12 +13,18 @@ from fabrica.domain.schemas import (
     AttemptOut,
     DecisionIn,
     DecisionOut,
+    EstimateOut,
+    FileOut,
     MessageOut,
     RequirementDetail,
     RequirementIn,
     RequirementOut,
+    SapCallOut,
+    TransportOut,
 )
 from fabrica.domain.stages import TransitionError
+from fabrica.git.repo import repo_store
+from fabrica.notify.notifier import announce
 from fabrica.pipeline import commands
 
 router = APIRouter(prefix="/api/requirements", tags=["requisitos"])
@@ -53,13 +53,25 @@ async def detail(req_id: int, who: Who) -> RequirementDetail:
             req = await board.requirement(req_id)
         except LookupError as exc:
             raise HTTPException(404, str(exc)) from exc
+        estimate = await board.latest_estimate(req_id)
         return RequirementDetail(
             requirement=RequirementOut.model_validate(req),
             messages=[MessageOut.model_validate(m) for m in await board.messages(req_id)],
             attempts=[AttemptOut.model_validate(a) for a in await board.attempts(req_id)],
             decisions=[DecisionOut.model_validate(d) for d in await board.decisions(req_id)],
             artifacts=[ArtifactOut.model_validate(a) for a in await board.artifacts(req_id)],
+            transports=[TransportOut.model_validate(t) for t in await board.transports(req_id)],
+            estimate=EstimateOut.model_validate(estimate) if estimate else None,
+            sap_calls=[SapCallOut.model_validate(c) for c in await board.sap_calls(req_id)],
         )
+
+
+@router.get("/{req_id}/file", response_model=FileOut)
+async def read_file(req_id: int, path: str, who: Who) -> FileOut:
+    content = await repo_store().read_file(req_id, path)
+    if content is None:
+        raise HTTPException(404, f"{path} no existe en el repositorio del requisito")
+    return FileOut(path=path, content=content)
 
 
 @router.post("/{req_id}/answers", status_code=204)
@@ -71,6 +83,8 @@ async def answer(req_id: int, data: AnswerIn, who: Who, runner: RunnerDep) -> No
             )
     except LookupError as exc:
         raise HTTPException(404, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
     if unblocked:
         await runner.kick(req_id)
 
@@ -86,6 +100,8 @@ async def decision(req_id: int, data: DecisionIn, who: Who, runner: RunnerDep) -
         raise HTTPException(409, str(exc)) from exc
     if has_work:
         await runner.kick(req_id)
+    else:
+        await announce(req_id)
 
 
 @router.post("/{req_id}/resume", status_code=204)

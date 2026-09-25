@@ -1,9 +1,3 @@
-"""Flujo de Temporal por requisito: duerme hasta recibir `kick` y ejecuta el motor.
-
-Las decisiones humanas se guardan en la base de datos (fuente de verdad) y
-luego envían `kick`; el flujo nunca decide etapas por su cuenta.
-"""
-
 from __future__ import annotations
 
 from datetime import timedelta
@@ -32,12 +26,13 @@ class RequirementWorkflow:
             try:
                 await workflow.wait_condition(lambda: self._pending > 0, timeout=_IDLE_LIMIT)
             except TimeoutError:
-                return "inactivo"  # el próximo kick lo vuelve a iniciar
+                return "inactivo"
             self._pending = 0
             finished = await workflow.execute_activity(
                 drive_activity,
                 req_id,
-                start_to_close_timeout=timedelta(hours=2),
+                start_to_close_timeout=timedelta(hours=8),
+                heartbeat_timeout=timedelta(minutes=2),
                 retry_policy=RetryPolicy(maximum_attempts=3),
             )
             if finished:

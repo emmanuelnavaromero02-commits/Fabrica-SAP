@@ -1,5 +1,3 @@
-"""Contrato común a todos los proveedores de IA."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -10,12 +8,6 @@ from fabrica.catalog import ModelSpec
 
 @dataclass(frozen=True)
 class LLMRequest:
-    """Petición independiente del proveedor.
-
-    `schema` pide una respuesta JSON validada con ese JSON Schema.
-    `workdir` solo lo usan proveedores que trabajan sobre archivos (Codex).
-    """
-
     system: str
     prompt: str
     schema: dict[str, Any] | None = None
@@ -34,7 +26,10 @@ class LLMResult:
 
 
 class LLMError(RuntimeError):
-    """Fallo del proveedor (red, cuota, respuesta inválida). Se trata como intento fallido."""
+    def __init__(self, message: str, tokens_in: int = 0, tokens_out: int = 0) -> None:
+        super().__init__(message)
+        self.tokens_in = tokens_in
+        self.tokens_out = tokens_out
 
 
 class Provider(Protocol):

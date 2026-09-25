@@ -1,5 +1,3 @@
-"""Contratos del API (entrada y salida). El frontend replica estos tipos en TypeScript."""
-
 from __future__ import annotations
 
 from datetime import datetime
@@ -15,6 +13,13 @@ class ORM(BaseModel):
 class DocumentIn(BaseModel):
     name: str
     kind: str = "especificacion"
+    content: str
+
+
+class DocumentOut(ORM):
+    id: int
+    name: str
+    kind: str
     content: str
 
 
@@ -95,12 +100,52 @@ class ArtifactOut(ORM):
     created_at: datetime
 
 
+class TransportOut(ORM):
+    id: int
+    system: str
+    number: str
+    objects: list[str]
+    status: str
+    created_at: datetime
+
+
+class EstimateOut(ORM):
+    id: int
+    items: list[dict[str, Any]]
+    breakdown: dict[str, float]
+    assumptions: list[str]
+    hours_base: float
+    hours_total: float
+    days: float
+    complexity: str
+    created_at: datetime
+
+
+class SapCallOut(ORM):
+    id: int
+    system: str
+    tool: str
+    object_name: str
+    actor: str
+    ok: bool
+    detail: str
+    created_at: datetime
+
+
+class FileOut(BaseModel):
+    path: str
+    content: str
+
+
 class RequirementDetail(BaseModel):
     requirement: RequirementOut
     messages: list[MessageOut]
     attempts: list[AttemptOut]
     decisions: list[DecisionOut]
     artifacts: list[ArtifactOut]
+    transports: list[TransportOut] = Field(default_factory=list)
+    estimate: EstimateOut | None = None
+    sap_calls: list[SapCallOut] = Field(default_factory=list)
 
 
 class StageOut(BaseModel):
@@ -108,8 +153,17 @@ class StageOut(BaseModel):
     label: str
     kind: str
     roles: list[str]
+    next: str | None = None
+    on_reject: str | None = None
 
 
 class Identity(BaseModel):
     user: str
     role: str
+    roles: list[str] = Field(default_factory=list)
+
+
+class AuthConfigOut(BaseModel):
+    mode: str
+    issuer: str
+    client_id: str

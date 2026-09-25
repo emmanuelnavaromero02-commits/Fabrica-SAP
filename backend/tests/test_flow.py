@@ -1,5 +1,3 @@
-"""Recorrido completo por el API con proveedores simulados y SAP simulado."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -44,12 +42,10 @@ async def test_full_factory_flow(api: Any, isolated: Path) -> None:
     req_id = resp.json()["id"]
     await runner.wait_idle()
 
-    # 1. Sin documentos → el analista pregunta y el requisito se bloquea.
     d = await _detail(client, req_id)
     assert (d["requirement"]["stage"], d["requirement"]["state"]) == ("recepcion", "blocked")
     question = next(m for m in d["messages"] if m["kind"] == "pregunta")
 
-    # 2. El cliente responde → avanza solo hasta la aprobación del cliente.
     await client.post(
         f"/api/requirements/{req_id}/answers",
         json={
@@ -62,8 +58,10 @@ async def test_full_factory_flow(api: Any, isolated: Path) -> None:
     d = await _detail(client, req_id)
     assert d["requirement"]["stage"] == "aprobacion_cliente"
     assert d["requirement"]["capability"] == "FI"
+    estimate = d["estimate"]
+    assert estimate["items"][0]["size"] == "M" and estimate["complexity"] == "M"
+    assert estimate["hours_total"] == round((40 + 24) * 1.15, 2)
 
-    # 3. Aprobación del cliente → construcción con escalamiento N2 → N3.
     resp = await client.post(
         f"/api/requirements/{req_id}/decisions",
         json={"outcome": "approve"},
@@ -78,16 +76,17 @@ async def test_full_factory_flow(api: Any, isolated: Path) -> None:
     assert [a["passed"] for a in impl] == [False, False, True]
     assert any("SELECT *" in issue for issue in impl[0]["issues"])
     review = next(a for a in d["attempts"] if a["activity"] == "revisar")
-    assert review["provider"] != impl[-1]["provider"]  # revisión cruzada
+    assert review["provider"] != impl[-1]["provider"]
     assert any(m["kind"] == "escalamiento" for m in d["messages"])
 
-    # 4. El código verificado quedó en Git.
     paths = {a["path"] for a in d["artifacts"]}
     assert {"diseno/spec.md", "evidencia/construccion.json"} <= paths
     assert any(p.endswith(".prog.abap") for p in paths)
     assert (isolated / "repos" / f"req-{req_id}" / ".git").exists()
+    [transport] = d["transports"]
+    assert transport["system"] == "PRUEBA-DEV" and transport["number"].startswith("DEVK9")
+    assert transport["objects"] == ["Z_REPORTE_DE_FACTURAS"]
 
-    # 5. Compuertas humanas: el rol equivocado no puede aprobar.
     resp = await client.post(
         f"/api/requirements/{req_id}/decisions",
         json={"outcome": "approve"},

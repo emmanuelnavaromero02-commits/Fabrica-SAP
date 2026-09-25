@@ -1,5 +1,3 @@
-"""Modelo de datos: el "tablero" compartido por agentes y personas."""
-
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -23,9 +21,9 @@ class Base(DeclarativeBase):
 
 
 class RunState(StrEnum):
-    RUNNING = "running"  # agentes trabajando
-    WAITING_GATE = "waiting_gate"  # espera decisión humana
-    BLOCKED = "blocked"  # faltan datos o se agotó el escalamiento
+    RUNNING = "running"
+    WAITING_GATE = "waiting_gate"
+    BLOCKED = "blocked"
     DONE = "done"
 
 
@@ -54,6 +52,7 @@ class Requirement(Base):
     created_by: Mapped[str] = mapped_column(String(80))
     spent_usd: Mapped[float] = mapped_column(default=0.0)
     repo_url: Mapped[str | None] = mapped_column(String(300))
+    lease_until: Mapped[datetime | None] = mapped_column(default=None)
     created_at: Mapped[datetime] = mapped_column(default=now)
     updated_at: Mapped[datetime] = mapped_column(default=now, onupdate=now)
 
@@ -66,15 +65,13 @@ class Document(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     requirement_id: Mapped[int] = mapped_column(ForeignKey("requirements.id"), index=True)
     name: Mapped[str] = mapped_column(String(200))
-    kind: Mapped[str] = mapped_column(String(40))  # especificacion, transcripcion, pantallas…
+    kind: Mapped[str] = mapped_column(String(40))
     content: Mapped[str] = mapped_column(Text)
 
     requirement: Mapped[Requirement] = relationship(back_populates="documents")
 
 
 class Message(Base):
-    """Mensaje tipado entre agentes y/o personas, agrupado por hilo (actividad)."""
-
     __tablename__ = "messages"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -90,14 +87,12 @@ class Message(Base):
 
 
 class Decision(Base):
-    """Decisión humana en una compuerta. El actor sale de la sesión, nunca de texto libre."""
-
     __tablename__ = "decisions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     requirement_id: Mapped[int] = mapped_column(ForeignKey("requirements.id"), index=True)
     stage: Mapped[str] = mapped_column(String(40))
-    outcome: Mapped[str] = mapped_column(String(20))  # approve | reject | discard
+    outcome: Mapped[str] = mapped_column(String(20))
     actor: Mapped[str] = mapped_column(String(80))
     role: Mapped[str] = mapped_column(String(40))
     comment: Mapped[str] = mapped_column(Text, default="")
@@ -105,8 +100,6 @@ class Decision(Base):
 
 
 class Attempt(Base):
-    """Cada llamada a un modelo: nivel, proveedor, tokens, costo y si pasó la verificación."""
-
     __tablename__ = "attempts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -124,8 +117,6 @@ class Attempt(Base):
 
 
 class Artifact(Base):
-    """Índice de lo que se guardó en Git (spec, código, evidencias)."""
-
     __tablename__ = "artifacts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -137,8 +128,6 @@ class Artifact(Base):
 
 
 class SapCall(Base):
-    """Auditoría de cada llamada al Puente SAP."""
-
     __tablename__ = "sap_calls"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -150,3 +139,55 @@ class SapCall(Base):
     ok: Mapped[bool] = mapped_column(default=True)
     detail: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(default=now)
+
+
+class Transport(Base):
+    __tablename__ = "transports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    requirement_id: Mapped[int] = mapped_column(ForeignKey("requirements.id"), index=True)
+    system: Mapped[str] = mapped_column(String(40))
+    number: Mapped[str] = mapped_column(String(20))
+    objects: Mapped[list[Any]] = mapped_column(default=list)
+    status: Mapped[str] = mapped_column(String(20), default="modificable")
+    created_at: Mapped[datetime] = mapped_column(default=now)
+
+
+class Lesson(Base):
+    __tablename__ = "lessons"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    activity: Mapped[str] = mapped_column(String(40), index=True)
+    capability: Mapped[str | None] = mapped_column(String(40))
+    text: Mapped[str] = mapped_column(Text)
+    source: Mapped[str] = mapped_column(String(40))
+    requirement_id: Mapped[int | None] = mapped_column(index=True)
+    uses: Mapped[int] = mapped_column(default=0)
+    created_at: Mapped[datetime] = mapped_column(default=now)
+
+
+class Estimate(Base):
+    __tablename__ = "estimates"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    requirement_id: Mapped[int] = mapped_column(ForeignKey("requirements.id"), index=True)
+    items: Mapped[list[Any]] = mapped_column(default=list)
+    breakdown: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    assumptions: Mapped[list[Any]] = mapped_column(default=list)
+    hours_base: Mapped[float] = mapped_column(default=0.0)
+    hours_total: Mapped[float] = mapped_column(default=0.0)
+    days: Mapped[float] = mapped_column(default=0.0)
+    complexity: Mapped[str] = mapped_column(String(4))
+    created_at: Mapped[datetime] = mapped_column(default=now)
+
+
+class WorkSession(Base):
+    __tablename__ = "work_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user: Mapped[str] = mapped_column(String(80), index=True)
+    requirement_id: Mapped[int | None] = mapped_column(index=True)
+    source: Mapped[str] = mapped_column(String(20))
+    started_at: Mapped[datetime] = mapped_column(default=now)
+    last_seen_at: Mapped[datetime] = mapped_column(default=now)
+    seconds: Mapped[int] = mapped_column(default=0)

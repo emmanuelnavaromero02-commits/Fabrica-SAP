@@ -1,64 +1,147 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { api } from "./api";
-import { IdentityBar } from "./components/IdentityBar";
-import { NewRequirementForm } from "./components/NewRequirementForm";
-import { RequirementList } from "./components/RequirementList";
+import type { Session } from "./auth";
+import { KanbanBoard } from "./components/KanbanBoard";
+import { NewRequirementModal } from "./components/NewRequirementModal";
+import { PortfolioView } from "./components/PortfolioView";
 import { RequirementView } from "./components/RequirementView";
-import { usePolling, useStored } from "./hooks";
-import type { Identity, Stage } from "./types";
+import { SessionGate } from "./components/SessionGate";
+import { TimeView } from "./components/TimeView";
+import { ThemeToggle } from "./components/ui/ThemeToggle";
+import { ToastProvider, useToast } from "./components/ui/Toasts";
+import { useActivityHeartbeat, usePolling, useStored } from "./hooks";
+import type { Stage } from "./types";
+
+type View = "tablero" | "requisito" | "portafolio" | "tiempo";
+
+const SUPERVISORS = ["admin", "lider"];
+const TITLES: Record<View, string> = {
+  tablero: "Tablero de la fábrica",
+  requisito: "Requisito",
+  portafolio: "Portafolio",
+  tiempo: "Tiempo trabajado",
+};
+
+function linkedRequirement(): number | null {
+  const value = new URLSearchParams(window.location.search).get("requisito");
+  return value ? Number(value) : null;
+}
 
 export function App() {
-  const [who, setWho] = useStored<Identity>("fabrica.identity", {
-    user: "ana",
-    role: "funcional",
-  });
+  return (
+    <ToastProvider>
+      <SessionGate>{(session, bar) => <Workspace session={session} bar={bar} />}</SessionGate>
+    </ToastProvider>
+  );
+}
+
+function Workspace({ session, bar }: { session: Session; bar: ReactNode }) {
+  const [view, setView] = useState<View>(linkedRequirement() ? "requisito" : "tablero");
   const [selected, setSelected] = useStored<number | null>("fabrica.selected", null);
-  const [stages, setStages] = useState<Stage[]>([]);
-  const list = usePolling(() => api.list(who), 3000);
+  const [creating, setCreating] = useState(false);
+  const [query, setQuery] = useState("");
+  const list = usePolling(() => api.list(session), 3000);
+  const stagesPoll = usePolling(() => api.stages(session), 60_000);
+  const stages: Stage[] = stagesPoll.data ?? [];
+  const notify = useToast();
+  const supervisor = SUPERVISORS.includes(session.role);
+
+  useActivityHeartbeat(() => api.heartbeat(session, view === "requisito" ? selected : null));
 
   useEffect(() => {
-    api.stages(who).then(setStages, () => setStages([]));
-  }, [who]);
+    const linked = linkedRequirement();
+    if (linked) setSelected(linked);
+  }, []);
+
+  const items = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const all = list.data ?? [];
+    return q ? all.filter((r) => `#${r.id} ${r.title} ${r.capability ?? ""}`.toLowerCase().includes(q)) : all;
+  }, [list.data, query]);
+
+  const open = (id: number) => {
+    setSelected(id);
+    setView("requisito");
+  };
+
+  const navItems: { key: View; label: string; show: boolean }[] = [
+    { key: "tablero", label: "🗂️ Tablero", show: true },
+    { key: "requisito", label: "📄 Requisito abierto", show: selected !== null },
+    { key: "portafolio", label: "📊 Portafolio", show: supervisor },
+    { key: "tiempo", label: "⏱️ Tiempo", show: true },
+  ];
 
   return (
-    <div className="app">
-      <header className="topbar">
-        <h1>🏭 Fábrica SAP</h1>
-        <span className="muted">beta · agentes con escalamiento N1→N4</span>
-        <IdentityBar who={who} onChange={setWho} />
-      </header>
-      <main className="layout">
-        <aside className="sidebar">
-          <NewRequirementForm
-            onCreate={async (data) => {
-              const created = await api.create(who, data);
-              setSelected(created.id);
-              await list.refresh();
-            }}
-          />
-          {list.error && <p className="error">API no disponible: {list.error}</p>}
-          <RequirementList
-            items={list.data ?? []}
-            stages={stages}
-            selected={selected}
-            onSelect={setSelected}
-          />
-        </aside>
-        <section className="content">
-          {selected ? (
-            <RequirementView
-              key={selected}
-              who={who}
-              id={selected}
-              stages={stages}
-              onChanged={() => void list.refresh()}
+    <div className="shell">
+      <nav className="nav" aria-label="Principal">
+        <div className="brand">
+          <span className="brand-mark" aria-hidden>
+            🏭
+          </span>
+          Fábrica SAP
+        </div>
+        {navItems
+          .filter((n) => n.show)
+          .map((n) => (
+            <button key={n.key} className={view === n.key ? "active" : ""} onClick={() => setView(n.key)}>
+              {n.label}
+            </button>
+          ))}
+        <span className="spacer" />
+        <div className="nav-foot">
+          <ThemeToggle />
+        </div>
+      </nav>
+      <div className="main">
+        <header className="topbar">
+          <h1>{TITLES[view]}</h1>
+          {view === "tablero" && (
+            <input
+              className="search"
+              placeholder="Buscar por número, título o módulo…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
             />
-          ) : (
-            <p className="muted">Selecciona un requisito o crea uno nuevo.</p>
           )}
-        </section>
-      </main>
+          <span className="grow" />
+          <button onClick={() => setCreating(true)}>＋ Nuevo requisito</button>
+          {bar}
+        </header>
+        {(list.error || (stagesPoll.error && !stagesPoll.data)) && (
+          <p className="error page">No se pudo conectar con el API: {list.error ?? stagesPoll.error}</p>
+        )}
+        {view === "tablero" && (
+          <section className="page">
+            <KanbanBoard items={items} stages={stages} selected={selected} onOpen={open} />
+          </section>
+        )}
+        {view === "requisito" && selected !== null && (
+          <RequirementView
+            key={selected}
+            session={session}
+            id={selected}
+            stages={stages}
+            onBack={() => setView("tablero")}
+            onChanged={() => void list.refresh()}
+          />
+        )}
+        {view === "portafolio" && supervisor && <PortfolioView session={session} stages={stages} onOpen={open} />}
+        {view === "tiempo" && <TimeView session={session} />}
+      </div>
+      {creating && (
+        <NewRequirementModal
+          onClose={() => setCreating(false)}
+          onCreate={async (data, files) => {
+            const created = files.length
+              ? await api.createWithFiles(session, data, files)
+              : await api.create(session, data);
+            notify(`Requisito #${created.id} enviado a la fábrica`);
+            await list.refresh();
+            open(created.id);
+          }}
+        />
+      )}
     </div>
   );
 }
