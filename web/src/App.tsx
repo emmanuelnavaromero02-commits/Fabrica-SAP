@@ -39,10 +39,11 @@ export function App() {
 function Workspace({ session, bar }: { session: Session; bar: ReactNode }) {
   const [view, setView] = useState<View>(linkedRequirement() ? "requisito" : "tablero");
   const [selected, setSelected] = useStored<number | null>("fabrica.selected", null);
-  const [stages, setStages] = useState<Stage[]>([]);
   const [creating, setCreating] = useState(false);
   const [query, setQuery] = useState("");
   const list = usePolling(() => api.list(session), 3000);
+  const stagesPoll = usePolling(() => api.stages(session), 60_000);
+  const stages: Stage[] = stagesPoll.data ?? [];
   const notify = useToast();
   const supervisor = SUPERVISORS.includes(session.role);
 
@@ -52,10 +53,6 @@ function Workspace({ session, bar }: { session: Session; bar: ReactNode }) {
     const linked = linkedRequirement();
     if (linked) setSelected(linked);
   }, []);
-
-  useEffect(() => {
-    api.stages(session).then(setStages, () => setStages([]));
-  }, [session.user, session.role]);
 
   const items = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -111,7 +108,9 @@ function Workspace({ session, bar }: { session: Session; bar: ReactNode }) {
           <button onClick={() => setCreating(true)}>＋ Nuevo requisito</button>
           {bar}
         </header>
-        {list.error && <p className="error page">No se pudo conectar con el API: {list.error}</p>}
+        {(list.error || (stagesPoll.error && !stagesPoll.data)) && (
+          <p className="error page">No se pudo conectar con el API: {list.error ?? stagesPoll.error}</p>
+        )}
         {view === "tablero" && (
           <section className="page">
             <KanbanBoard items={items} stages={stages} selected={selected} onOpen={open} />

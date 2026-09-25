@@ -53,7 +53,18 @@ function HeaderSession({ render }: { render: Render }) {
       </form>
     );
   }
-  return <>{render(headerSession(who), <IdentityBar who={who} onChange={setWho} />)}</>;
+  const bar = (
+    <RoleBar
+      session={headerSession(who)}
+      roles={HEADER_ROLES}
+      onRole={(role) => setWho({ ...who, role })}
+      onLogout={() => {
+        setDraft({ ...who, user: "" });
+        setWho({ ...who, user: "" });
+      }}
+    />
+  );
+  return <>{render(headerSession(who), bar)}</>;
 }
 
 function OidcSession({ config, render }: { config: AuthConfig; render: Render }) {
@@ -82,7 +93,14 @@ function OidcSession({ config, render }: { config: AuthConfig; render: Render })
   if (!identity) return <p className="muted center">Cargando permisos…</p>;
 
   const session = tokenSession(user.access_token, identity, role ?? undefined);
-  const bar = <RoleBar session={session} onRole={setRole} onLogout={() => manager.signoutRedirect()} />;
+  const bar = (
+    <RoleBar
+      session={session}
+      roles={session.roles}
+      onRole={setRole}
+      onLogout={() => void manager.signoutRedirect()}
+    />
+  );
   return <>{render(session, bar)}</>;
 }
 
@@ -100,13 +118,16 @@ function LoginScreen({ manager, error }: { manager: UserManager; error?: string 
   );
 }
 
+const HEADER_ROLES: Role[] = ["funcional", "usuario_clave", "abap", "lider", "admin", "consultor"];
+
 interface RoleBarProps {
   session: Session;
+  roles: Role[];
   onRole: (role: Role) => void;
   onLogout: () => void;
 }
 
-function RoleBar({ session, onRole, onLogout }: RoleBarProps) {
+function RoleBar({ session, roles, onRole, onLogout }: RoleBarProps) {
   return (
     <div className="identity">
       <span className="user">{session.user}</span>
@@ -115,13 +136,13 @@ function RoleBar({ session, onRole, onLogout }: RoleBarProps) {
         value={session.role}
         onChange={(e) => onRole(e.target.value as Role)}
       >
-        {session.roles.map((r) => (
+        {roles.map((r) => (
           <option key={r} value={r}>
             {r}
           </option>
         ))}
       </select>
-      <button className="secondary" onClick={onLogout}>
+      <button className="outline" onClick={onLogout}>
         Salir
       </button>
     </div>

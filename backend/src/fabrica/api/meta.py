@@ -31,7 +31,14 @@ async def auth_config() -> AuthConfigOut:
 @router.get("/stages", response_model=list[StageOut])
 async def stages() -> list[StageOut]:
     return [
-        StageOut(key=s.key, label=s.label, kind=s.kind.value, roles=s.roles)
+        StageOut(
+            key=s.key,
+            label=s.label,
+            kind=s.kind.value,
+            roles=s.roles,
+            next=s.next,
+            on_reject=s.on_reject,
+        )
         for s in stage_machine().stages
     ]
 

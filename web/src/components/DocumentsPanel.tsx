@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { api } from "../api";
 import type { Session } from "../auth";
+import { errorText } from "../errors";
 import { usePolling } from "../hooks";
 
 export function DocumentsPanel({ session, id }: { session: Session; id: number }) {
@@ -15,7 +16,7 @@ export function DocumentsPanel({ session, id }: { session: Session; id: number }
       await api.addDocuments(session, id, files);
       await refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorText(e));
     }
   }
 

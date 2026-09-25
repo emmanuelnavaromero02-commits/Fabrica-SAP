@@ -13,7 +13,8 @@ import { Summary } from "./detail/Summary";
 import { DocumentsPanel } from "./DocumentsPanel";
 import { GateActions } from "./GateActions";
 import { StateBadge } from "./StateBadge";
-import { errorText, useToast } from "./ui/Toasts";
+import { errorText } from "../errors";
+import { useToast } from "./ui/Toasts";
 
 type Tab = "resumen" | "conversacion" | "entregables" | "escalamiento" | "documentos" | "sap";
 

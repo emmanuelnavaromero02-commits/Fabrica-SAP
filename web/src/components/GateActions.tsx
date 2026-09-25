@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import type { Session } from "../auth";
+import { errorText } from "../errors";
 import type { Outcome, Requirement, Stage } from "../types";
 
 interface Props {
@@ -23,7 +24,7 @@ export function GateActions({ session, requirement, stage, onDecide, onResume }:
       await action();
       setComment("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorText(e));
     }
   };
 

@@ -1,7 +1,7 @@
-import { type DragEvent, type FormEvent, useState } from "react";
+import { type DragEvent, type FormEvent, useRef, useState } from "react";
 
 import type { NewRequirement } from "../types";
-import { errorText } from "./ui/Toasts";
+import { errorText } from "../errors";
 
 interface Props {
   onClose: () => void;
@@ -12,7 +12,9 @@ export function NewRequirementModal({ onClose, onCreate }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [project, setProject] = useState("demo");
+  const [spec, setSpec] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const pressedOnBackdrop = useRef(false);
   const [over, setOver] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +32,10 @@ export function NewRequirementModal({ onClose, onCreate }: Props) {
     setBusy(true);
     setError(null);
     try {
-      await onCreate({ title, description, project, documents: [] }, files);
+      const documents = spec.trim()
+        ? [{ name: "especificacion", kind: "especificacion", content: spec.trim() }]
+        : [];
+      await onCreate({ title, description, project, documents }, files);
       onClose();
     } catch (err) {
       setError(errorText(err));
@@ -40,8 +45,19 @@ export function NewRequirementModal({ onClose, onCreate }: Props) {
   }
 
   return (
-    <div className="overlay" role="dialog" aria-modal="true" aria-label="Nuevo requisito" onClick={onClose}>
-      <form className="modal" onSubmit={submit} onClick={(e) => e.stopPropagation()}>
+    <div
+      className="overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Nuevo requisito"
+      onMouseDown={(e) => {
+        pressedOnBackdrop.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        if (pressedOnBackdrop.current && e.target === e.currentTarget && !busy) onClose();
+      }}
+    >
+      <form className="modal" onSubmit={submit}>
         <h2>Nuevo requisito</h2>
         <label>
           Título
@@ -50,6 +66,10 @@ export function NewRequirementModal({ onClose, onCreate }: Props) {
         <label>
           Descripción
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} minLength={10} required rows={4} />
+        </label>
+        <label>
+          Especificación funcional (opcional, también puedes adjuntar archivos)
+          <textarea value={spec} onChange={(e) => setSpec(e.target.value)} rows={4} />
         </label>
         <label>
           Proyecto
@@ -80,12 +100,12 @@ export function NewRequirementModal({ onClose, onCreate }: Props) {
             ))}
           </ul>
         )}
-        {files.length === 0 && (
+        {files.length === 0 && !spec.trim() && (
           <p className="muted">Sin documentos, el Analista preguntará al cliente lo que falte antes de diseñar.</p>
         )}
         {error && <p className="error">{error}</p>}
         <div className="modal-actions">
-          <button type="button" className="ghost" onClick={onClose}>
+          <button type="button" className="ghost" onClick={onClose} disabled={busy}>
             Cancelar
           </button>
           <button type="submit" disabled={busy}>

@@ -32,7 +32,3 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 export const useToast = () => useContext(ToastContext);
-
-export function errorText(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}

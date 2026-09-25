@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { errorText } from "./errors";
+
 export function usePolling<T>(load: () => Promise<T>, intervalMs = 2500) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -11,7 +13,7 @@ export function usePolling<T>(load: () => Promise<T>, intervalMs = 2500) {
       setData(await loadRef.current());
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorText(e));
     }
   }, []);
 

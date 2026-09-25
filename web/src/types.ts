@@ -138,6 +138,8 @@ export interface Stage {
   label: string;
   kind: "auto" | "gate" | "final";
   roles: string[];
+  next: string | null;
+  on_reject: string | null;
 }
 
 export interface NewRequirement {

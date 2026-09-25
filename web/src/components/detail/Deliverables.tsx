@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
 import type { Session } from "../../auth";
 import type { Artifact } from "../../types";
-import { errorText } from "../ui/Toasts";
+import { errorText } from "../../errors";
 import { CodeViewer } from "./CodeViewer";
 
 const PRIORITY = ["diseno/spec.md", "src/", "diseno/estimacion.json", "docs/", "evidencia/", "inputs/"];
@@ -29,18 +29,24 @@ export function Deliverables({ session, id, artifacts, repoUrl }: Props) {
   const [content, setContent] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const current = selected ?? paths[0] ?? null;
+  const last = artifacts.filter((a) => a.path === current).at(-1);
+  const version = last?.commit ?? "";
 
   useEffect(() => {
     if (!current) return;
+    let active = true;
     setError(null);
+    setContent("");
     api.file(session, id, current).then(
-      (file) => setContent(file.content),
-      (e: unknown) => setError(errorText(e)),
+      (file) => active && setContent(file.content),
+      (e: unknown) => active && setError(errorText(e)),
     );
-  }, [current, id, session.user, session.role]);
+    return () => {
+      active = false;
+    };
+  }, [current, version, id, session.user, session.role]);
 
   if (!paths.length) return <p className="empty">Todavía no hay entregables en el repositorio.</p>;
-  const last = artifacts.filter((a) => a.path === current).at(-1);
 
   return (
     <div className="files">

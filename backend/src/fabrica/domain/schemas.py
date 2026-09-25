@@ -153,6 +153,8 @@ class StageOut(BaseModel):
     label: str
     kind: str
     roles: list[str]
+    next: str | None = None
+    on_reject: str | None = None
 
 
 class Identity(BaseModel):
