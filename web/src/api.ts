@@ -1,10 +1,14 @@
 import type { Session } from "./auth";
 import type {
+  BillingSnapshot,
+  Capability,
+  Client,
   DocumentFile,
   Identity,
   NewRequirement,
   Outcome,
   Portfolio,
+  Project,
   RepoFile,
   Requirement,
   RequirementDetail,
@@ -93,4 +97,39 @@ export const api = {
   portfolio: (s: Session) => request<Portfolio>(s, "/api/portfolio"),
   resume: (s: Session, id: number) =>
     request<void>(s, `/api/requirements/${id}/resume`, { method: "POST" }),
+  clients: (s: Session) => request<Client[]>(s, "/api/clients"),
+  createClient: (s: Session, data: { name: string; code: string }) =>
+    request<Client>(s, "/api/clients", post(data)),
+  projects: (s: Session) => request<Project[]>(s, "/api/projects"),
+  createProject: (
+    s: Session,
+    data: { name: string; code: string; client_id?: number | null; sap_system?: string | null },
+  ) => request<Project>(s, "/api/projects", post(data)),
+  capabilities: (s: Session, projectId: number) =>
+    request<Capability[]>(s, `/api/projects/${projectId}/capabilities`),
+  createCapability: (s: Session, projectId: number, data: { name: string; code: string }) =>
+    request<Capability>(s, `/api/projects/${projectId}/capabilities`, post(data)),
+  claim: (s: Session, id: number) =>
+    request<void>(s, `/api/requirements/${id}/claim`, { method: "POST" }),
+  transfer: (s: Session, id: number, user: string) =>
+    request<void>(s, `/api/requirements/${id}/transfer`, post({ user })),
+  release: (s: Session, id: number) =>
+    request<void>(s, `/api/requirements/${id}/release`, { method: "POST" }),
+  snapshots: (s: Session, projectCode: string) =>
+    request<BillingSnapshot[]>(s, `/api/projects/${encodeURIComponent(projectCode)}/snapshots`),
+  createSnapshot: (s: Session, projectCode: string) =>
+    request<BillingSnapshot>(
+      s,
+      `/api/projects/${encodeURIComponent(projectCode)}/snapshots`,
+      post({ project: projectCode }),
+    ),
+  exportBillingUrl: (projectCode: string, s?: Session) => {
+    const q = s ? `?user=${encodeURIComponent(s.user)}&role=${encodeURIComponent(s.role)}` : "";
+    return `/api/projects/${encodeURIComponent(projectCode)}/export/billing${q}`;
+  },
+  dossierUrl: (id: number, s?: Session) => {
+    const q = s ? `?user=${encodeURIComponent(s.user)}&role=${encodeURIComponent(s.role)}` : "";
+    return `/api/requirements/${id}/dossier${q}`;
+  },
 };
+

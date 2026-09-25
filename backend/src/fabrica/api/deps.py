@@ -50,9 +50,14 @@ async def identity(
     x_fabrica_user: Annotated[str | None, Header()] = None,
     x_fabrica_role: Annotated[str | None, Header()] = None,
 ) -> Identity:
+    effective_user = x_fabrica_user or request.query_params.get("user")
+    effective_role = x_fabrica_role or request.query_params.get("role")
+    effective_auth = authorization or (
+        f"Bearer {request.query_params['token']}" if "token" in request.query_params else None
+    )
     if get_settings().auth_mode == "oidc":
-        return await _from_token(request, authorization, x_fabrica_role)
-    return _from_headers(x_fabrica_user, x_fabrica_role)
+        return await _from_token(request, effective_auth, effective_role)
+    return _from_headers(effective_user, effective_role)
 
 
 def runner(request: Request) -> Runner:

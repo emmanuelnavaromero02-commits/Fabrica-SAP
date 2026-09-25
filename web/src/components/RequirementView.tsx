@@ -69,6 +69,53 @@ export function RequirementView({ session, id, stages, onBack, onChanged }: Prop
         </h2>
         <StateBadge state={req.state} />
         <span className="chip num">IA ${req.spent_usd.toFixed(4)}</span>
+        <a
+          className="button outline"
+          href={api.dossierUrl(req.id, session)}
+          target="_blank"
+          rel="noreferrer"
+          style={{ textDecoration: "none", fontSize: "12px", padding: "4px 10px", borderRadius: "6px" }}
+        >
+          📄 Acta Técnica
+        </a>
+      </div>
+      <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 16px", marginBottom: "12px" }}>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <span>⚽ <strong>Pelota:</strong></span>
+          {req.holder_user ? (
+            <span className="chip">👤 Asignado a: <strong>{req.holder_user}</strong></span>
+          ) : (
+            <span className="chip">👥 En pool: <strong>{req.holder_role || stage?.label || "equipo"}</strong></span>
+          )}
+        </div>
+        <div className="gate-buttons">
+          {!req.holder_user && (
+            <button style={{ padding: "4px 10px" }} onClick={() => after(api.claim(session, id), "Requisito tomado")}>
+              ✋ Tomar del pool
+            </button>
+          )}
+          {req.holder_user === session.user && (
+            <>
+              <button
+                className="outline"
+                style={{ padding: "4px 10px" }}
+                onClick={() => {
+                  const target = window.prompt("Usuario destinatario:");
+                  if (target) after(api.transfer(session, id, target), `Transferido a ${target}`);
+                }}
+              >
+                Pasar pelota
+              </button>
+              <button
+                className="ghost"
+                style={{ padding: "4px 10px" }}
+                onClick={() => after(api.release(session, id), "Devuelto al pool")}
+              >
+                Devolver al pool
+              </button>
+            </>
+          )}
+        </div>
       </div>
       <Stepper stages={stages} current={req.stage} messages={data.messages} />
       <GateActions

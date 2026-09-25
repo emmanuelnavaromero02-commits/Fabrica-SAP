@@ -48,6 +48,9 @@ export function Deliverables({ session, id, artifacts, repoUrl }: Props) {
 
   if (!paths.length) return <p className="empty">Todavía no hay entregables en el repositorio.</p>;
 
+  const [viewMode, setViewMode] = useState<"code" | "preview">("preview");
+  const isHtml = current?.endsWith(".html") ?? false;
+
   return (
     <div className="files">
       <ul className="file-list" aria-label="Archivos del repositorio">
@@ -61,12 +64,43 @@ export function Deliverables({ session, id, artifacts, repoUrl }: Props) {
         {repoUrl && <li className="repo-url">{repoUrl}</li>}
       </ul>
       <div className="viewer">
-        {last && (
-          <p className="viewer-meta">
-            {last.author} · commit <code>{last.commit.slice(0, 8)}</code>
-          </p>
+        <div className="viewer-meta" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          {last && (
+            <span>
+              {last.author} · commit <code>{last.commit.slice(0, 8)}</code>
+            </span>
+          )}
+          {isHtml && (
+            <div className="gate-buttons">
+              <button
+                className={viewMode === "preview" ? "active" : ""}
+                onClick={() => setViewMode("preview")}
+                style={{ padding: "2px 8px", fontSize: "12px" }}
+              >
+                Vista previa
+              </button>
+              <button
+                className={viewMode === "code" ? "active" : ""}
+                onClick={() => setViewMode("code")}
+                style={{ padding: "2px 8px", fontSize: "12px" }}
+              >
+                Código HTML
+              </button>
+            </div>
+          )}
+        </div>
+        {error ? (
+          <p className="error viewer-meta">{error}</p>
+        ) : current && isHtml && viewMode === "preview" ? (
+          <iframe
+            sandbox="allow-scripts"
+            srcDoc={content}
+            style={{ width: "100%", height: "550px", border: "1px solid var(--line)", borderRadius: "6px", background: "#fff" }}
+            title="Prototipo Fiori"
+          />
+        ) : (
+          current && <CodeViewer path={current} source={content} />
         )}
-        {error ? <p className="error viewer-meta">{error}</p> : current && <CodeViewer path={current} source={content} />}
       </div>
     </div>
   );

@@ -53,6 +53,9 @@ class Requirement(Base):
     spent_usd: Mapped[float] = mapped_column(default=0.0)
     repo_url: Mapped[str | None] = mapped_column(String(300))
     lease_until: Mapped[datetime | None] = mapped_column(default=None)
+    holder_role: Mapped[str | None] = mapped_column(String(40), default=None)
+    holder_user: Mapped[str | None] = mapped_column(String(80), default=None)
+    holder_since: Mapped[datetime | None] = mapped_column(default=None)
     created_at: Mapped[datetime] = mapped_column(default=now)
     updated_at: Mapped[datetime] = mapped_column(default=now, onupdate=now)
 
@@ -191,3 +194,49 @@ class WorkSession(Base):
     started_at: Mapped[datetime] = mapped_column(default=now)
     last_seen_at: Mapped[datetime] = mapped_column(default=now)
     seconds: Mapped[int] = mapped_column(default=0)
+
+
+class Client(Base):
+    __tablename__ = "clients"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True)
+    code: Mapped[str] = mapped_column(String(40), unique=True)
+    created_at: Mapped[datetime] = mapped_column(default=now)
+
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[int | None] = mapped_column(
+        ForeignKey("clients.id"), index=True, default=None
+    )
+    name: Mapped[str] = mapped_column(String(100))
+    code: Mapped[str] = mapped_column(String(40), unique=True)
+    sap_system: Mapped[str | None] = mapped_column(String(40), default=None)
+    created_at: Mapped[datetime] = mapped_column(default=now)
+
+
+class Capability(Base):
+    __tablename__ = "capabilities"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int | None] = mapped_column(
+        ForeignKey("projects.id"), index=True, default=None
+    )
+    name: Mapped[str] = mapped_column(String(100))
+    code: Mapped[str] = mapped_column(String(40))
+    created_at: Mapped[datetime] = mapped_column(default=now)
+
+
+class BillingSnapshot(Base):
+    __tablename__ = "billing_snapshots"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project: Mapped[str] = mapped_column(String(80), index=True)
+    created_by: Mapped[str] = mapped_column(String(80))
+    hours_total: Mapped[float] = mapped_column(default=0.0)
+    hours_billed: Mapped[float] = mapped_column(default=0.0)
+    items: Mapped[list[Any]] = mapped_column(default=list)
+    created_at: Mapped[datetime] = mapped_column(default=now)

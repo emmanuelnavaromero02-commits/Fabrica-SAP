@@ -136,14 +136,17 @@ class Steps:
         estimate = await estimate_requirement(self.router, self.board, req, out.output)
         if estimate is None:
             return StepResult("blocked", "La estimación requiere una persona")
+        save_files = {
+            "diseno/spec.md": out.output["spec_markdown"],
+            SPEC_JSON: json.dumps(out.output, ensure_ascii=False, indent=2),
+            "diseno/estimacion.json": estimate_file(estimate),
+        }
+        if out.output.get("prototype_html"):
+            save_files["diseno/prototipo.html"] = out.output["prototype_html"]
         await self._save(
             req,
-            {
-                "diseno/spec.md": out.output["spec_markdown"],
-                SPEC_JSON: json.dumps(out.output, ensure_ascii=False, indent=2),
-                "diseno/estimacion.json": estimate_file(estimate),
-            },
-            "Diseño: especificación, aseveraciones y estimación",
+            save_files,
+            "Diseño: especificación, aseveraciones, prototipo y estimación",
             roles.ARQUITECTO.name,
         )
         return StepResult("advance")

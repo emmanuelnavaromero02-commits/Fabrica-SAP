@@ -12,7 +12,7 @@ from fabrica.config import get_settings
 
 class SapSystem(BaseModel):
     name: str = ""
-    kind: Literal["adt"] = "adt"
+    kind: Literal["adt", "mock"] = "adt"
     url: str = ""
     client: str = ""
     user_env: str = ""

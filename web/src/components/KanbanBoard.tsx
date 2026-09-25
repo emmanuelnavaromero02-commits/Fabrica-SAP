@@ -41,6 +41,11 @@ export function KanbanBoard({ items, stages, selected, onOpen }: Props) {
                   <span className="num">#{r.id}</span>
                   {r.capability && <span className="chip">{r.capability}</span>}
                   {r.ricefw && <span className="chip">RICEFW {r.ricefw}</span>}
+                  {r.holder_user ? (
+                    <span className="chip" style={{ background: "rgba(37,99,235,0.15)", color: "var(--primary)" }}>👤 {r.holder_user}</span>
+                  ) : (
+                    <span className="chip">👥 Pool</span>
+                  )}
                 </span>
                 <span className="title">{r.title}</span>
                 <span className="meta">

@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     gitea_org: str = "fabrica"
 
     sap_allowed_packages: tuple[str, ...] = ("Z", "Y")
+    sap_mode: Literal["adt", "mock"] = "mock"
 
     cors_origins: tuple[str, ...] = ("http://localhost:5173",)
 

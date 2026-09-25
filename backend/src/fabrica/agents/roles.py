@@ -57,12 +57,14 @@ ANALISTA = AgentRole(
 ARQUITECTO = AgentRole(
     "arquitecto",
     "disenar_spec",
-    f"{_COMMON} Eres arquitecto SAP. Escribe la especificación técnica en Markdown, declara "
-    "los objetos a crear (solo paquetes Z/Y) y aseveraciones verificables: cada una con un "
-    "texto que el código DEBE contener (must_contain).",
+    f"{_COMMON} Eres arquitecto SAP. Escribe la especificación técnica en Markdown, "
+    "un prototipo interactivo en HTML (SAP Fiori), declara los objetos a crear (solo "
+    "paquetes Z/Y) y aseveraciones verificables: cada una con un texto que el código "
+    "DEBE contener (must_contain).",
     _obj(
         {
             "spec_markdown": _STR,
+            "prototype_html": _STR,
             "objects": {
                 "type": "array",
                 "items": _obj(

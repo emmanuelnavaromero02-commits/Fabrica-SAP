@@ -13,6 +13,8 @@ async def create_requirement(board: Board, data: RequirementIn, who: Identity) -
         title=data.title,
         description=data.description,
         project=data.project,
+        capability=data.capability,
+        ricefw=data.ricefw,
         stage=first.key,
         state=RunState.RUNNING,
         created_by=who.user,
@@ -86,3 +88,49 @@ async def resume(board: Board, req_id: int, who: Identity) -> bool:
         body="Etapa reanudada manualmente",
     )
     return True
+
+
+async def claim(board: Board, req_id: int, who: Identity) -> None:
+    from fabrica.db.models import now
+
+    req = await board.requirement(req_id)
+    req.holder_role = who.role
+    req.holder_user = who.user
+    req.holder_since = now()
+    await board.post(
+        req.id,
+        thread="asignacion",
+        sender=who.user,
+        kind=MessageKind.INFO,
+        body=f"{who.user} tomó el requisito del pool ({who.role})",
+    )
+
+
+async def transfer(board: Board, req_id: int, target_user: str, who: Identity) -> None:
+    from fabrica.db.models import now
+
+    req = await board.requirement(req_id)
+    req.holder_user = target_user
+    req.holder_since = now()
+    await board.post(
+        req.id,
+        thread="asignacion",
+        sender=who.user,
+        kind=MessageKind.INFO,
+        body=f"{who.user} transfirió el requisito a {target_user}",
+    )
+
+
+async def release(board: Board, req_id: int, who: Identity) -> None:
+    from fabrica.db.models import now
+
+    req = await board.requirement(req_id)
+    req.holder_user = None
+    req.holder_since = now()
+    await board.post(
+        req.id,
+        thread="asignacion",
+        sender=who.user,
+        kind=MessageKind.INFO,
+        body=f"{who.user} devolvió el requisito al pool",
+    )

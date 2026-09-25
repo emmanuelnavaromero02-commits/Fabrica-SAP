@@ -12,6 +12,8 @@ export function NewRequirementModal({ onClose, onCreate }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [project, setProject] = useState("demo");
+  const [ricefw, setRicefw] = useState("Reporte");
+  const [capability, setCapability] = useState("FI");
   const [spec, setSpec] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const pressedOnBackdrop = useRef(false);
@@ -35,7 +37,7 @@ export function NewRequirementModal({ onClose, onCreate }: Props) {
       const documents = spec.trim()
         ? [{ name: "especificacion", kind: "especificacion", content: spec.trim() }]
         : [];
-      await onCreate({ title, description, project, documents }, files);
+      await onCreate({ title, description, project, capability, ricefw, documents }, files);
       onClose();
     } catch (err) {
       setError(errorText(err));
@@ -71,10 +73,31 @@ export function NewRequirementModal({ onClose, onCreate }: Props) {
           Especificación funcional (opcional, también puedes adjuntar archivos)
           <textarea value={spec} onChange={(e) => setSpec(e.target.value)} rows={4} />
         </label>
-        <label>
-          Proyecto
-          <input value={project} onChange={(e) => setProject(e.target.value)} required />
-        </label>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <label style={{ flex: 1 }}>
+            Proyecto
+            <input value={project} onChange={(e) => setProject(e.target.value)} required />
+          </label>
+          <label style={{ flex: 1 }}>
+            Tipo RICEFW
+            <select value={ricefw} onChange={(e) => setRicefw(e.target.value)}>
+              <option value="Reporte">Reporte (R)</option>
+              <option value="Interfaz">Interfaz (I)</option>
+              <option value="Conversion">Conversión (C)</option>
+              <option value="Mejora">Mejora / Enhancement (E)</option>
+              <option value="Formulario">Formulario (F)</option>
+              <option value="Workflow">Workflow (W)</option>
+            </select>
+          </label>
+          <label style={{ width: "100px" }}>
+            Módulo
+            <input
+              value={capability}
+              onChange={(e) => setCapability(e.target.value.toUpperCase())}
+              placeholder="FI, MM, SD"
+            />
+          </label>
+        </div>
         <div
           className={over ? "dropzone over" : "dropzone"}
           onDragOver={(e) => {

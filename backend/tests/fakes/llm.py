@@ -70,6 +70,12 @@ class FakeProvider:
                 "2. Lectura con campos explícitos y cláusula WHERE.\n"
                 "3. Salida ALV.\n"
             ),
+            "prototype_html": (
+                "<!DOCTYPE html><html><head><title>Prototipo SAP Fiori</title>"
+                "<style>body{font-family:sans-serif;padding:20px;}</style></head>"
+                "<body><header><h2>Fiori Launchpad</h2></header>"
+                "<main><div><p>Filtros y tabla ALV</p></div></main></body></html>"
+            ),
             "objects": [{"name": name, "type": "PROG", "package": "ZFAB"}],
             "assertions": [
                 {

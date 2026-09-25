@@ -30,6 +30,9 @@ export interface Requirement {
   created_by: string;
   spent_usd: number;
   repo_url: string | null;
+  holder_role?: string | null;
+  holder_user?: string | null;
+  holder_since?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -146,6 +149,8 @@ export interface NewRequirement {
   title: string;
   description: string;
   project: string;
+  capability?: string | null;
+  ricefw?: string | null;
   documents: { name: string; kind: string; content: string }[];
 }
 
@@ -177,3 +182,47 @@ export interface Portfolio {
     ai_cost_usd: number;
   })[];
 }
+
+export interface Client {
+  id: number;
+  name: string;
+  code: string;
+  created_at: string;
+}
+
+export interface Project {
+  id: number;
+  client_id: number | null;
+  name: string;
+  code: string;
+  sap_system: string | null;
+  created_at: string;
+}
+
+export interface Capability {
+  id: number;
+  project_id: number | null;
+  name: string;
+  code: string;
+  created_at: string;
+}
+
+export interface BillingSnapshot {
+  id: number;
+  project: string;
+  created_by: string;
+  hours_total: number;
+  hours_billed: number;
+  items: Array<{
+    requirement_id: number;
+    title: string;
+    capability: string;
+    stage: string;
+    state: string;
+    hours: number;
+    weight: number;
+    billed: number;
+  }>;
+  created_at: string;
+}
+

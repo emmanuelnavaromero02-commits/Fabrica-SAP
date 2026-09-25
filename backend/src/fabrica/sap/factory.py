@@ -9,12 +9,19 @@ from fabrica.sap.adt_bridge import AdtSap
 from fabrica.sap.bridge import GuardedBridge, SapBridge, SapObject
 from fabrica.sap.systems import SapSystem, sap_landscape
 
-_ADT_SESSIONS: dict[str, AdtSap] = {}
+_ADT_SESSIONS: dict[str, SapBridge] = {}
 
 
 def connect(system: SapSystem) -> SapBridge:
     if system.name not in _ADT_SESSIONS:
-        _ADT_SESSIONS[system.name] = AdtSap(system)
+        if get_settings().sap_mode == "mock":
+            from fabrica.sap.simulated import SimulatedSapSystem
+
+            _ADT_SESSIONS[system.name] = SimulatedSapSystem(
+                get_settings().data_dir / "sap_mock", system.name
+            )
+        else:
+            _ADT_SESSIONS[system.name] = AdtSap(system)
     return _ADT_SESSIONS[system.name]
 
 
