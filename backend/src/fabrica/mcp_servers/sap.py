@@ -12,6 +12,7 @@ from fabrica.pipeline.steps import SPEC_JSON
 from fabrica.sap.adt_bridge import AdtError
 from fabrica.sap.bridge import Assertion, CheckResult, PolicyViolation, SapObject
 from fabrica.sap.factory import sap_for
+from fabrica.sap.systems import SapNotConfigured
 
 server = MCPServer(
     name="sap",
@@ -40,11 +41,11 @@ async def escribir_objeto(
     requisito_id: int, nombre: str, tipo: str, paquete: str, fuente: str
 ) -> dict[str, Any]:
     async with mcp_session(requisito_id) as s:
-        sap = await sap_for(Board(s), requisito_id, actor())
         obj = SapObject(name=nombre, type=tipo, package=paquete, source=fuente)
         try:
+            sap = await sap_for(Board(s), requisito_id, actor())
             transport = await sap.write(obj)
-        except (PolicyViolation, AdtError) as exc:
+        except (PolicyViolation, AdtError, SapNotConfigured) as exc:
             return {"ok": False, "error": str(exc)}
         return {"ok": True, "sistema": sap.bridge.system, "transporte": transport}
 

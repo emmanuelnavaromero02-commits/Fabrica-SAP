@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from fabrica.sap.bridge import GuardedBridge, PolicyViolation, SapObject
-from fabrica.sap.simulated import SimulatedSap
+from tests.fakes.sap import FakeSapSystem
 
 calls: list[tuple[str, str, bool]] = []
 
@@ -12,8 +12,8 @@ async def _audit(tool: str, obj: str, ok: bool, detail: str) -> None:
     calls.append((tool, obj, ok))
 
 
-def _bridge(tmp_path: Path, system: str = "SIM-DEV") -> GuardedBridge:
-    return GuardedBridge(SimulatedSap(tmp_path, system), ("Z", "Y"), _audit)
+def _bridge(tmp_path: Path, system: str = "PRUEBA-DEV") -> GuardedBridge:
+    return GuardedBridge(FakeSapSystem(tmp_path, system), ("Z", "Y"), _audit)
 
 
 async def test_writes_only_customer_packages(tmp_path: Path) -> None:
@@ -24,7 +24,7 @@ async def test_writes_only_customer_packages(tmp_path: Path) -> None:
 
 
 async def test_never_writes_outside_dev(tmp_path: Path) -> None:
-    bridge = _bridge(tmp_path, system="SIM-QAS")
+    bridge = _bridge(tmp_path, system="PRUEBA-QAS")
     with pytest.raises(PolicyViolation):
         await bridge.write_object(SapObject("ZTEST", "PROG", "ZFAB", "REPORT ztest."), "T1")
 

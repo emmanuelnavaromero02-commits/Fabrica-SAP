@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from fabrica.config import get_settings
 
-Provider = Literal["anthropic", "openai", "codex", "mock"]
+Provider = Literal["anthropic", "openai", "codex"]
 TIER_ORDER = ("N1", "N2", "N3", "N4")
 
 

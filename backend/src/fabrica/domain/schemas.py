@@ -121,6 +121,22 @@ class EstimateOut(ORM):
     created_at: datetime
 
 
+class SapCallOut(ORM):
+    id: int
+    system: str
+    tool: str
+    object_name: str
+    actor: str
+    ok: bool
+    detail: str
+    created_at: datetime
+
+
+class FileOut(BaseModel):
+    path: str
+    content: str
+
+
 class RequirementDetail(BaseModel):
     requirement: RequirementOut
     messages: list[MessageOut]
@@ -129,6 +145,7 @@ class RequirementDetail(BaseModel):
     artifacts: list[ArtifactOut]
     transports: list[TransportOut] = Field(default_factory=list)
     estimate: EstimateOut | None = None
+    sap_calls: list[SapCallOut] = Field(default_factory=list)
 
 
 class StageOut(BaseModel):

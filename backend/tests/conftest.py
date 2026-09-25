@@ -8,6 +8,13 @@ import pytest
 
 from fabrica import catalog, config
 from fabrica.db import session as db
+from fabrica.llm import gateway
+from fabrica.sap import factory
+from fabrica.sap.systems import SapLandscape, SapSystem
+from tests.fakes.llm import FakeProvider
+from tests.fakes.sap import FakeSapSystem
+
+TEST_SYSTEM = "PRUEBA-DEV"
 
 
 @pytest.fixture(autouse=True)
@@ -15,9 +22,16 @@ async def isolated(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> AsyncIter
     monkeypatch.setenv("FABRICA_DATA_DIR", str(tmp_path))
     url = os.environ.get("FABRICA_TEST_DATABASE_URL", f"sqlite+aiosqlite:///{tmp_path}/test.db")
     monkeypatch.setenv("FABRICA_DATABASE_URL", url)
-    monkeypatch.setenv("FABRICA_LLM_MODE", "mock")
     monkeypatch.setenv("FABRICA_RUNNER", "inline")
     monkeypatch.setenv("FABRICA_GIT_BACKEND", "local")
+    monkeypatch.setenv("FABRICA_AUTH_MODE", "headers")
+
+    fake_sap = FakeSapSystem(tmp_path / "sap", TEST_SYSTEM)
+    landscape = SapLandscape(default=TEST_SYSTEM, systems={TEST_SYSTEM: SapSystem()})
+    monkeypatch.setattr(gateway, "build_provider", lambda name: FakeProvider())
+    monkeypatch.setattr(factory, "connect", lambda system: fake_sap)
+    monkeypatch.setattr(factory, "sap_landscape", lambda: landscape)
+
     config.get_settings.cache_clear()
     catalog.model_catalog.cache_clear()
     catalog.stage_machine.cache_clear()

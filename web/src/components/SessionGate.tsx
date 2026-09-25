@@ -35,7 +35,7 @@ export function SessionGate({ children }: { children: Render }) {
 }
 
 function HeaderSession({ render }: { render: Render }) {
-  const [who, setWho] = useStored<Identity>("fabrica.identity", { user: "ana", role: "funcional" });
+  const [who, setWho] = useStored<Identity>("fabrica.identity", { user: "", role: "funcional" });
   return <>{render(headerSession(who), <IdentityBar who={who} onChange={setWho} />)}</>;
 }
 

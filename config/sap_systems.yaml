@@ -1,17 +1,3 @@
-default: SIM-DEV
-
-systems:
-  SIM-DEV:
-    kind: simulated
-  CLIENTE-DEV:
-    kind: adt
-    url: https://sap-dev.cliente.local:44300
-    client: "100"
-    user_env: FABRICA_SAP_CLIENTE_DEV_USER
-    password_env: FABRICA_SAP_CLIENTE_DEV_PASSWORD
-    atc_variant: DEFAULT
-    language: ES
-    verify_tls: true
-
-projects:
-  demo: SIM-DEV
+default: null
+systems: {}
+projects: {}

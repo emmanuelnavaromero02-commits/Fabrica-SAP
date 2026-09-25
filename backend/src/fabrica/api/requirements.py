@@ -14,13 +14,16 @@ from fabrica.domain.schemas import (
     DecisionIn,
     DecisionOut,
     EstimateOut,
+    FileOut,
     MessageOut,
     RequirementDetail,
     RequirementIn,
     RequirementOut,
+    SapCallOut,
     TransportOut,
 )
 from fabrica.domain.stages import TransitionError
+from fabrica.git.repo import repo_store
 from fabrica.notify.notifier import announce
 from fabrica.pipeline import commands
 
@@ -59,7 +62,16 @@ async def detail(req_id: int, who: Who) -> RequirementDetail:
             artifacts=[ArtifactOut.model_validate(a) for a in await board.artifacts(req_id)],
             transports=[TransportOut.model_validate(t) for t in await board.transports(req_id)],
             estimate=EstimateOut.model_validate(estimate) if estimate else None,
+            sap_calls=[SapCallOut.model_validate(c) for c in await board.sap_calls(req_id)],
         )
+
+
+@router.get("/{req_id}/file", response_model=FileOut)
+async def read_file(req_id: int, path: str, who: Who) -> FileOut:
+    content = await repo_store().read_file(req_id, path)
+    if content is None:
+        raise HTTPException(404, f"{path} no existe en el repositorio del requisito")
+    return FileOut(path=path, content=content)
 
 
 @router.post("/{req_id}/answers", status_code=204)

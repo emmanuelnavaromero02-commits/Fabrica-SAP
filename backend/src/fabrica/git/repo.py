@@ -90,8 +90,11 @@ class LocalRepoStore:
         return self.path(req_id).as_uri()
 
     async def read_file(self, req_id: int, path: str) -> str | None:
-        target = self.path(req_id) / path
-        return target.read_text(encoding="utf-8") if target.exists() else None
+        root = self.path(req_id).resolve()
+        target = (root / path).resolve()
+        if root not in target.parents or not target.is_file():
+            return None
+        return target.read_text(encoding="utf-8")
 
 
 class GiteaRepoStore:

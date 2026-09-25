@@ -84,7 +84,7 @@ async def test_full_factory_flow(api: Any, isolated: Path) -> None:
     assert any(p.endswith(".prog.abap") for p in paths)
     assert (isolated / "repos" / f"req-{req_id}" / ".git").exists()
     [transport] = d["transports"]
-    assert transport["system"] == "SIM-DEV" and transport["number"].startswith("SIMK9")
+    assert transport["system"] == "PRUEBA-DEV" and transport["number"].startswith("DEVK9")
     assert transport["objects"] == ["Z_REPORTE_DE_FACTURAS"]
 
     resp = await client.post(

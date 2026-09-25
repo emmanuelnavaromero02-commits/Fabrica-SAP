@@ -3,10 +3,12 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from fabrica.api import documents, meta, requirements, tracking
 from fabrica.api.deps import build_verifier
@@ -40,6 +42,9 @@ def create_app() -> FastAPI:
     async def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    web_dir = Path(get_settings().web_dir)
+    if get_settings().web_dir and (web_dir / "index.html").exists():
+        app.mount("/", StaticFiles(directory=web_dir, html=True), name="web")
     return app
 
 

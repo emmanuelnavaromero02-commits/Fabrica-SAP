@@ -135,3 +135,12 @@ class Board:
     async def latest_estimate(self, req_id: int) -> Estimate | None:
         q = select(Estimate).where(Estimate.requirement_id == req_id).order_by(Estimate.id.desc())
         return (await self.s.scalars(q)).first()
+
+    async def sap_calls(self, req_id: int, limit: int = 200) -> list[SapCall]:
+        q = (
+            select(SapCall)
+            .where(SapCall.requirement_id == req_id)
+            .order_by(SapCall.id.desc())
+            .limit(limit)
+        )
+        return list(reversed((await self.s.scalars(q)).all()))

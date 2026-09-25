@@ -16,6 +16,7 @@ from fabrica.llm.base import LLMRequest
 from fabrica.llm.gateway import ModelGateway
 from fabrica.sap.bridge import Assertion
 from fabrica.sap.factory import sap_for
+from fabrica.sap.systems import SapNotConfigured
 from fabrica.verifiers.abap import AbapVerifier
 from fabrica.verifiers.base import Verification
 from fabrica.verifiers.spec import SpecVerifier
@@ -154,11 +155,11 @@ class Steps:
         spec = json.loads(raw)
         main = spec["objects"][0]
         assertions = [Assertion(**a) for a in spec["assertions"]]
-        verifier = AbapVerifier(
-            await sap_for(self.board, req.id, roles.DESARROLLADOR.name),
-            main_object=main,
-            assertions=assertions,
-        )
+        try:
+            sap = await sap_for(self.board, req.id, roles.DESARROLLADOR.name)
+        except SapNotConfigured as exc:
+            return StepResult("blocked", str(exc))
+        verifier = AbapVerifier(sap, main_object=main, assertions=assertions)
         prompt = (
             f"{await _context(self.board, req)}\n\n## Spec\n{spec['spec_markdown']}\n\n"
             f"Objeto principal: {main['name']}\n"

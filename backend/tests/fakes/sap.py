@@ -17,8 +17,8 @@ _ATC_RULES: list[tuple[str, str, str]] = [
 ]
 
 
-class SimulatedSap:
-    def __init__(self, root: Path, system: str = "SIM-DEV") -> None:
+class FakeSapSystem:
+    def __init__(self, root: Path, system: str = "PRUEBA-DEV") -> None:
         self.system = system
         self.root = root / system
         self.root.mkdir(parents=True, exist_ok=True)
@@ -73,7 +73,7 @@ class SimulatedSap:
     async def ensure_transport(self, obj: SapObject, text: str, current: str | None) -> str:
         if current:
             return current
-        return f"SIMK9{zlib.crc32(f'{obj.package}:{text}'.encode()) % 100000:05d}"
+        return f"DEVK9{zlib.crc32(f'{obj.package}:{text}'.encode()) % 100000:05d}"
 
     async def run_unit(self, name: str, assertions: list[Assertion]) -> CheckResult:
         return CheckResult(assertion_findings(await self._source(name), assertions))

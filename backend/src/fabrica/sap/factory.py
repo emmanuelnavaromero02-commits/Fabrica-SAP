@@ -7,18 +7,15 @@ from fabrica.config import get_settings
 from fabrica.db.models import SapCall
 from fabrica.sap.adt_bridge import AdtSap
 from fabrica.sap.bridge import GuardedBridge, SapBridge, SapObject
-from fabrica.sap.simulated import SimulatedSap
 from fabrica.sap.systems import SapSystem, sap_landscape
 
 _ADT_SESSIONS: dict[str, AdtSap] = {}
 
 
-def _inner(system: SapSystem) -> SapBridge:
-    if system.kind == "adt":
-        if system.name not in _ADT_SESSIONS:
-            _ADT_SESSIONS[system.name] = AdtSap(system)
-        return _ADT_SESSIONS[system.name]
-    return SimulatedSap(get_settings().data_dir / "sap", system.name)
+def connect(system: SapSystem) -> SapBridge:
+    if system.name not in _ADT_SESSIONS:
+        _ADT_SESSIONS[system.name] = AdtSap(system)
+    return _ADT_SESSIONS[system.name]
 
 
 @dataclass
@@ -49,7 +46,7 @@ class RequirementSap:
 async def sap_for(board: Board, req_id: int, actor: str) -> RequirementSap:
     req = await board.requirement(req_id)
     system = sap_landscape().for_project(req.project)
-    inner = _inner(system)
+    inner = connect(system)
 
     async def audit(tool: str, obj: str, ok: bool, detail: str) -> None:
         await board.audit_sap(

@@ -17,8 +17,8 @@ def _title(prompt: str) -> str:
     return match.group(1).strip() if match else "Requisito"
 
 
-class MockProvider:
-    name = "mock"
+class FakeProvider:
+    name = "fake"
 
     async def complete(self, spec: ModelSpec, request: LLMRequest) -> LLMResult:
         activity = request.tags.get("activity", "")

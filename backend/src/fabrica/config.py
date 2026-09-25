@@ -23,7 +23,6 @@ class Settings(BaseSettings):
     temporal_host: str = "localhost:7233"
     temporal_queue: str = "fabrica"
 
-    llm_mode: Literal["mock", "live"] = "mock"
     codex_bin: str = "codex"
     sandbox: Literal["none", "docker"] = "none"
     sandbox_image: str = "fabrica-agente:latest"
@@ -34,15 +33,15 @@ class Settings(BaseSettings):
     gitea_token: str = ""
     gitea_org: str = "fabrica"
 
-    sap_backend: Literal["simulated"] = "simulated"
     sap_allowed_packages: tuple[str, ...] = ("Z", "Y")
 
     cors_origins: tuple[str, ...] = ("http://localhost:5173",)
 
     notify_webhook_url: str = ""
     public_url: str = "http://localhost:5173"
+    web_dir: str = ""
 
-    auth_mode: Literal["headers", "oidc"] = "headers"
+    auth_mode: Literal["headers", "oidc"] = "oidc"
     oidc_issuer: str = "http://localhost:8080/realms/fabrica"
     oidc_client_id: str = "fabrica-web"
     oidc_audience: str = "fabrica-api"
