@@ -13,6 +13,24 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     op.create_table(
+        "lessons",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("activity", sa.String(length=40), nullable=False),
+        sa.Column("capability", sa.String(length=40), nullable=True),
+        sa.Column("text", sa.Text(), nullable=False),
+        sa.Column("source", sa.String(length=40), nullable=False),
+        sa.Column("requirement_id", sa.Integer(), nullable=True),
+        sa.Column("uses", sa.Integer(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    with op.batch_alter_table("lessons", schema=None) as batch_op:
+        batch_op.create_index(batch_op.f("ix_lessons_activity"), ["activity"], unique=False)
+        batch_op.create_index(
+            batch_op.f("ix_lessons_requirement_id"), ["requirement_id"], unique=False
+        )
+
+    op.create_table(
         "requirements",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("title", sa.String(length=200), nullable=False),
@@ -204,3 +222,8 @@ def downgrade() -> None:
 
     op.drop_table("sap_calls")
     op.drop_table("requirements")
+    with op.batch_alter_table("lessons", schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f("ix_lessons_requirement_id"))
+        batch_op.drop_index(batch_op.f("ix_lessons_activity"))
+
+    op.drop_table("lessons")

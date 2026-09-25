@@ -30,6 +30,7 @@ fabrica-worker = "fabrica.workflow.worker:run"
 fabrica-mcp-fabrica = "fabrica.mcp_servers.fabrica:run"
 fabrica-mcp-sap = "fabrica.mcp_servers.sap:run"
 fabrica-migrate = "fabrica.db.migrate:run"
+fabrica-mcp-conocimiento = "fabrica.mcp_servers.conocimiento:run"
 
 [build-system]
 requires = ["hatchling"]

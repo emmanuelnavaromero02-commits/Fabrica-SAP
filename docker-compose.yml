@@ -90,6 +90,20 @@ services:
       FABRICA_MCP_PORT: "8102"
     ports: ["8102:8102"]
 
+  mcp-conocimiento:
+    <<: *backend
+    command: ["fabrica-mcp-conocimiento"]
+    environment:
+      FABRICA_DATABASE_URL: postgresql+asyncpg://fabrica:fabrica@postgres:5432/fabrica
+      FABRICA_AUTO_SCHEMA: "false"
+      FABRICA_AUTH_MODE: oidc
+      FABRICA_OIDC_ISSUER: http://localhost:8080/realms/fabrica
+      FABRICA_OIDC_JWKS_URL: http://keycloak:8080/realms/fabrica/protocol/openid-connect/certs
+      FABRICA_MCP_TRANSPORT: http
+      FABRICA_MCP_HOST: 0.0.0.0
+      FABRICA_MCP_PORT: "8103"
+    ports: ["8103:8103"]
+
   web:
     image: node:22-alpine
     working_dir: /app

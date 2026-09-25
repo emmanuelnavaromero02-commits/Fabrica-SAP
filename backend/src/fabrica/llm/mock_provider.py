@@ -107,7 +107,8 @@ class MockProvider:
         }
 
     def _revisar(self, prompt: str, tier: str) -> dict[str, Any]:
-        issues = ["Evitar SELECT *: leer solo campos necesarios"] if "SELECT *" in prompt else []
+        code = prompt.split("## Código", 1)[-1]
+        issues = ["Evitar SELECT *: leer solo campos necesarios"] if "SELECT *" in code else []
         return {"approved": not issues, "objections": issues}
 
     def _documentar(self, prompt: str, tier: str) -> dict[str, Any]:

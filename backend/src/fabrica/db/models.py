@@ -150,3 +150,16 @@ class Transport(Base):
     objects: Mapped[list[Any]] = mapped_column(default=list)
     status: Mapped[str] = mapped_column(String(20), default="modificable")
     created_at: Mapped[datetime] = mapped_column(default=now)
+
+
+class Lesson(Base):
+    __tablename__ = "lessons"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    activity: Mapped[str] = mapped_column(String(40), index=True)
+    capability: Mapped[str | None] = mapped_column(String(40))
+    text: Mapped[str] = mapped_column(Text)
+    source: Mapped[str] = mapped_column(String(40))
+    requirement_id: Mapped[int | None] = mapped_column(index=True)
+    uses: Mapped[int] = mapped_column(default=0)
+    created_at: Mapped[datetime] = mapped_column(default=now)

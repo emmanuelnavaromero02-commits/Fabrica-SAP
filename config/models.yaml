@@ -28,3 +28,7 @@ activities:
   documentar:      { start: N1, max_tier: N2, attempts: 1 }
 
 budget_usd_per_requirement: 25.0
+
+learning:
+  min_samples: 5
+  min_pass_rate: 0.3

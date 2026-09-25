@@ -1,4 +1,4 @@
-.PHONY: install api web worker test lint check up down mcp-fabrica mcp-sap
+.PHONY: install api web worker test lint check up down mcp-fabrica mcp-sap mcp-conocimiento
 
 BACKEND := cd backend &&
 
@@ -20,6 +20,9 @@ mcp-fabrica:
 
 mcp-sap:
 	$(BACKEND) uv run fabrica-mcp-sap
+
+mcp-conocimiento:
+	$(BACKEND) uv run fabrica-mcp-conocimiento
 
 test:
 	$(BACKEND) uv run pytest -q

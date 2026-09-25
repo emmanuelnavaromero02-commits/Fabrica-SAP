@@ -42,10 +42,16 @@ class ActivityPolicy(BaseModel):
         return list(TIER_ORDER[lo : hi + 1])
 
 
+class LearningPolicy(BaseModel):
+    min_samples: int = 5
+    min_pass_rate: float = 0.3
+
+
 class ModelCatalog(BaseModel):
     tiers: dict[str, Tier]
     activities: dict[str, ActivityPolicy]
     budget_usd_per_requirement: float = 25.0
+    learning: LearningPolicy = Field(default_factory=LearningPolicy)
 
     def policy(self, activity: str) -> ActivityPolicy:
         return self.activities[activity]

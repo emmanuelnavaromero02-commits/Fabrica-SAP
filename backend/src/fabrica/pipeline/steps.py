@@ -10,6 +10,7 @@ from fabrica.config import get_settings
 from fabrica.db.models import MessageKind, Requirement
 from fabrica.escalation.router import EscalationRouter
 from fabrica.git.repo import RepoStore
+from fabrica.knowledge.standards import standards
 from fabrica.llm.base import LLMRequest
 from fabrica.llm.gateway import ModelGateway
 from fabrica.sap.bridge import Assertion
@@ -121,7 +122,10 @@ class Steps:
         out = await self.router.run(
             req.id,
             "disenar_spec",
-            _request(roles.ARQUITECTO, await _context(self.board, req)),
+            _request(
+                roles.ARQUITECTO,
+                await _context(self.board, req) + standards().render(req.capability),
+            ),
             SpecVerifier(allowed),
             agent=roles.ARQUITECTO.name,
         )
@@ -154,6 +158,7 @@ class Steps:
             f"{await _context(self.board, req)}\n\n## Spec\n{spec['spec_markdown']}\n\n"
             f"Objeto principal: {main['name']}\n"
             f"Aseveraciones: {json.dumps(spec['assertions'], ensure_ascii=False)}"
+            f"{standards().render(req.capability)}"
         )
 
         workspace = await WorkspaceManager().prepare(req.id, self.repos.clone_url(req.id))
