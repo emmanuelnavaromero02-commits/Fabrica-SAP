@@ -125,3 +125,7 @@ code { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.9em;
 .tier-N4 { background: #ffe5e5; color: #c53030; }
 
 .artifacts { display: grid; gap: 6px; padding-left: 18px; }
+
+.center { text-align: center; margin-top: 20vh; }
+.login { display: grid; gap: 16px; justify-items: center; margin-top: 20vh; }
+.user { align-self: center; font-weight: 600; white-space: nowrap; }

@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from fabrica.api import meta, requirements
+from fabrica.api.deps import build_verifier
 from fabrica.config import get_settings
 from fabrica.db.session import init_db
 from fabrica.pipeline.runner import build_runner
@@ -18,6 +19,7 @@ from fabrica.pipeline.runner import build_runner
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await init_db()
     app.state.runner = build_runner()
+    app.state.oidc = build_verifier()
     yield
 
 

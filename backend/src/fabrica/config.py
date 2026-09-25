@@ -36,6 +36,12 @@ class Settings(BaseSettings):
 
     cors_origins: tuple[str, ...] = ("http://localhost:5173",)
 
+    auth_mode: Literal["headers", "oidc"] = "headers"
+    oidc_issuer: str = "http://localhost:8080/realms/fabrica"
+    oidc_client_id: str = "fabrica-web"
+    oidc_audience: str = "fabrica-api"
+    oidc_jwks_url: str = ""
+
     @property
     def db_url(self) -> str:
         return self.database_url or f"sqlite+aiosqlite:///{self.data_dir / 'fabrica.db'}"

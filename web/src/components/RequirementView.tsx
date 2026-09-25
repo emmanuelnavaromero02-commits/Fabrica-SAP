@@ -1,8 +1,9 @@
 import { useState } from "react";
 
 import { api } from "../api";
+import type { Session } from "../auth";
 import { usePolling } from "../hooks";
-import type { Identity, Outcome, Stage } from "../types";
+import type { Outcome, Stage } from "../types";
 import { AttemptsTable } from "./AttemptsTable";
 import { BoardFeed } from "./BoardFeed";
 import { GateActions } from "./GateActions";
@@ -19,15 +20,15 @@ const TABS: { key: Tab; label: string }[] = [
 ];
 
 interface Props {
-  who: Identity;
+  session: Session;
   id: number;
   stages: Stage[];
   onChanged: () => void;
 }
 
-export function RequirementView({ who, id, stages, onChanged }: Props) {
+export function RequirementView({ session, id, stages, onChanged }: Props) {
   const [tab, setTab] = useState<Tab>("tablero");
-  const { data, error, refresh } = usePolling(() => api.detail(who, id), 2000);
+  const { data, error, refresh } = usePolling(() => api.detail(session, id), 2000);
 
   if (error) return <p className="error">{error}</p>;
   if (!data) return <p className="muted">Cargando…</p>;
@@ -56,13 +57,13 @@ export function RequirementView({ who, id, stages, onChanged }: Props) {
 
       <StageTimeline stages={stages} current={req.stage} />
       <GateActions
-        who={who}
+        session={session}
         requirement={req}
         stage={stage}
         onDecide={(outcome: Outcome, comment: string) =>
-          after(api.decide(who, id, outcome, comment))
+          after(api.decide(session, id, outcome, comment))
         }
-        onResume={() => after(api.resume(who, id))}
+        onResume={() => after(api.resume(session, id))}
       />
 
       <nav className="tabs">
@@ -80,7 +81,7 @@ export function RequirementView({ who, id, stages, onChanged }: Props) {
       {tab === "tablero" && (
         <BoardFeed
           messages={data.messages}
-          onAnswer={(messageId, body) => after(api.answer(who, id, messageId, body))}
+          onAnswer={(messageId, body) => after(api.answer(session, id, messageId, body))}
         />
       )}
       {tab === "escalamiento" && <AttemptsTable attempts={data.attempts} />}

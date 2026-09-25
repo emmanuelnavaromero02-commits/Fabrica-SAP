@@ -1,0 +1,218 @@
+{
+  "realm": "fabrica",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "accessTokenLifespan": 900,
+  "roles": {
+    "realm": [
+      {
+        "name": "admin"
+      },
+      {
+        "name": "lider"
+      },
+      {
+        "name": "funcional"
+      },
+      {
+        "name": "usuario_clave"
+      },
+      {
+        "name": "abap"
+      },
+      {
+        "name": "consultor"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "fabrica-web",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:5173/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
+      "protocolMappers": [
+        {
+          "name": "audiencia-fabrica-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "fabrica-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ],
+      "defaultClientScopes": [
+        "web-origins",
+        "profile",
+        "roles",
+        "email"
+      ]
+    },
+    {
+      "clientId": "fabrica-mcp",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost/*",
+        "http://127.0.0.1/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
+      "protocolMappers": [
+        {
+          "name": "audiencia-fabrica-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "fabrica-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ],
+      "defaultClientScopes": [
+        "web-origins",
+        "profile",
+        "roles",
+        "email"
+      ]
+    },
+    {
+      "clientId": "fabrica-api",
+      "enabled": true,
+      "bearerOnly": true,
+      "publicClient": false
+    }
+  ],
+  "users": [
+    {
+      "username": "ana",
+      "enabled": true,
+      "email": "ana@fabrica.local",
+      "emailVerified": true,
+      "firstName": "Ana",
+      "lastName": "Fábrica",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "fabrica",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "funcional"
+      ]
+    },
+    {
+      "username": "carla",
+      "enabled": true,
+      "email": "carla@fabrica.local",
+      "emailVerified": true,
+      "firstName": "Carla",
+      "lastName": "Fábrica",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "fabrica",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "usuario_clave"
+      ]
+    },
+    {
+      "username": "luis",
+      "enabled": true,
+      "email": "luis@fabrica.local",
+      "emailVerified": true,
+      "firstName": "Luis",
+      "lastName": "Fábrica",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "fabrica",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "abap"
+      ]
+    },
+    {
+      "username": "lucia",
+      "enabled": true,
+      "email": "lucia@fabrica.local",
+      "emailVerified": true,
+      "firstName": "Lucia",
+      "lastName": "Fábrica",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "fabrica",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "lider"
+      ]
+    },
+    {
+      "username": "admin",
+      "enabled": true,
+      "email": "admin@fabrica.local",
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "Fábrica",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "fabrica",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin"
+      ]
+    },
+    {
+      "username": "consultor",
+      "enabled": true,
+      "email": "consultor@fabrica.local",
+      "emailVerified": true,
+      "firstName": "Consultor",
+      "lastName": "Fábrica",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "fabrica",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "consultor"
+      ]
+    }
+  ]
+}

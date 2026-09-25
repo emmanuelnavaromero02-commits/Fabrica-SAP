@@ -15,6 +15,7 @@ export type MessageKind =
 export interface Identity {
   user: string;
   role: Role;
+  roles?: Role[];
 }
 
 export interface Requirement {

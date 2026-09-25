@@ -9,7 +9,7 @@ from fabrica.blackboard.service import Board
 from fabrica.catalog import StageKind, stage_machine
 from fabrica.db.models import MessageKind, Requirement, RunState
 from fabrica.db.session import init_db, session_scope
-from fabrica.mcp_servers.common import actor, serve
+from fabrica.mcp_servers.common import actor, auth_kwargs, serve
 
 server = MCPServer(
     name="fabrica",
@@ -17,6 +17,7 @@ server = MCPServer(
         "Tablero de la fábrica SAP. Lee requisitos y conversaciones, publica mensajes "
         "tipados. Las decisiones de compuerta NO se toman por aquí: van por el portal."
     ),
+    **auth_kwargs(8101),
 )
 
 _ALLOWED_KINDS = {k.value for k in MessageKind} - {MessageKind.DECISION.value}

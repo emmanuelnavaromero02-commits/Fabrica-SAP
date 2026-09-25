@@ -111,3 +111,10 @@ class StageOut(BaseModel):
 class Identity(BaseModel):
     user: str
     role: str
+    roles: list[str] = Field(default_factory=list)
+
+
+class AuthConfigOut(BaseModel):
+    mode: str
+    issuer: str
+    client_id: str

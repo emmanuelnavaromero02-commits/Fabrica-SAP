@@ -1,3 +1,4 @@
+import type { Session } from "./auth";
 import type {
   Identity,
   NewRequirement,
@@ -16,13 +17,13 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(who: Identity, path: string, init: RequestInit = {}): Promise<T> {
+export async function request<T>(session: Session, path: string, init: RequestInit = {}): Promise<T> {
+  const jsonBody = typeof init.body === "string";
   const response = await fetch(path, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
-      "X-Fabrica-User": who.user,
-      "X-Fabrica-Role": who.role,
+      ...(jsonBody ? { "Content-Type": "application/json" } : {}),
+      ...session.headers,
       ...init.headers,
     },
   });
@@ -34,18 +35,19 @@ async function request<T>(who: Identity, path: string, init: RequestInit = {}): 
   return response.status === 204 ? (undefined as T) : ((await response.json()) as T);
 }
 
-const post = (body: unknown): RequestInit => ({ method: "POST", body: JSON.stringify(body) });
+export const post = (body: unknown): RequestInit => ({ method: "POST", body: JSON.stringify(body) });
 
 export const api = {
-  stages: (who: Identity) => request<Stage[]>(who, "/api/stages"),
-  list: (who: Identity) => request<Requirement[]>(who, "/api/requirements"),
-  detail: (who: Identity, id: number) => request<RequirementDetail>(who, `/api/requirements/${id}`),
-  create: (who: Identity, data: NewRequirement) =>
-    request<Requirement>(who, "/api/requirements", post(data)),
-  answer: (who: Identity, id: number, messageId: number, body: string) =>
-    request<void>(who, `/api/requirements/${id}/answers`, post({ message_id: messageId, body })),
-  decide: (who: Identity, id: number, outcome: Outcome, comment: string) =>
-    request<void>(who, `/api/requirements/${id}/decisions`, post({ outcome, comment })),
-  resume: (who: Identity, id: number) =>
-    request<void>(who, `/api/requirements/${id}/resume`, { method: "POST" }),
+  me: (s: Session) => request<Identity>(s, "/api/me"),
+  stages: (s: Session) => request<Stage[]>(s, "/api/stages"),
+  list: (s: Session) => request<Requirement[]>(s, "/api/requirements"),
+  detail: (s: Session, id: number) => request<RequirementDetail>(s, `/api/requirements/${id}`),
+  create: (s: Session, data: NewRequirement) =>
+    request<Requirement>(s, "/api/requirements", post(data)),
+  answer: (s: Session, id: number, messageId: number, body: string) =>
+    request<void>(s, `/api/requirements/${id}/answers`, post({ message_id: messageId, body })),
+  decide: (s: Session, id: number, outcome: Outcome, comment: string) =>
+    request<void>(s, `/api/requirements/${id}/decisions`, post({ outcome, comment })),
+  resume: (s: Session, id: number) =>
+    request<void>(s, `/api/requirements/${id}/resume`, { method: "POST" }),
 };

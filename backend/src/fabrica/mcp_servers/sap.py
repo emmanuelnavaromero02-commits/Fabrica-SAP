@@ -8,7 +8,7 @@ from mcp.server.mcpserver import MCPServer
 from fabrica.blackboard.service import Board
 from fabrica.db.session import init_db, session_scope
 from fabrica.git.repo import repo_store
-from fabrica.mcp_servers.common import actor, serve
+from fabrica.mcp_servers.common import actor, auth_kwargs, serve
 from fabrica.pipeline.steps import SPEC_JSON
 from fabrica.sap.bridge import Assertion, CheckResult, PolicyViolation, SapObject
 from fabrica.sap.factory import bridge_for
@@ -19,6 +19,7 @@ server = MCPServer(
         "Puente SAP del requisito. El sistema lo decide el servidor. Escritura solo en DEV y "
         "paquetes Z/Y; los transportes los libera una persona."
     ),
+    **auth_kwargs(8102),
 )
 
 
