@@ -9,7 +9,9 @@
         "fabrica-mcp-fabrica"
       ],
       "env": {
-        "FABRICA_MCP_USER": "consultor"
+        "FABRICA_MCP_USER": "${USER}",
+        "FABRICA_DATABASE_URL": "postgresql+asyncpg://fabrica:fabrica@localhost:5432/fabrica",
+        "FABRICA_AUTO_SCHEMA": "false"
       }
     },
     "sap": {
@@ -21,7 +23,9 @@
         "fabrica-mcp-sap"
       ],
       "env": {
-        "FABRICA_MCP_USER": "consultor"
+        "FABRICA_MCP_USER": "${USER}",
+        "FABRICA_DATABASE_URL": "postgresql+asyncpg://fabrica:fabrica@localhost:5432/fabrica",
+        "FABRICA_AUTO_SCHEMA": "false"
       }
     },
     "conocimiento": {
@@ -33,7 +37,9 @@
         "fabrica-mcp-conocimiento"
       ],
       "env": {
-        "FABRICA_MCP_USER": "consultor"
+        "FABRICA_MCP_USER": "${USER}",
+        "FABRICA_DATABASE_URL": "postgresql+asyncpg://fabrica:fabrica@localhost:5432/fabrica",
+        "FABRICA_AUTO_SCHEMA": "false"
       }
     }
   }

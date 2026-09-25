@@ -1,22 +1,31 @@
-x-backend: &backend
-  build: { context: ., dockerfile: backend/Dockerfile }
+x-app-env: &app-env
+  FABRICA_DATABASE_URL: postgresql+asyncpg://fabrica:fabrica@postgres:5432/fabrica
+  FABRICA_AUTO_SCHEMA: "false"
+  FABRICA_RUNNER: temporal
+  FABRICA_TEMPORAL_HOST: temporal:7233
+  FABRICA_AUTH_MODE: oidc
+  FABRICA_OIDC_ISSUER: http://localhost:8080/realms/fabrica
+  FABRICA_OIDC_JWKS_URL: http://keycloak:8080/realms/fabrica/protocol/openid-connect/certs
+  FABRICA_PUBLIC_URL: http://localhost:8000
+  FABRICA_CORS_ORIGINS: '["http://localhost:8000", "http://localhost:5173"]'
+
+x-app: &app
+  build: { context: ., target: app }
+  image: fabrica-sap:local
   env_file:
     - path: .env
       required: false
-  environment:
-    FABRICA_DATABASE_URL: postgresql+asyncpg://fabrica:fabrica@postgres:5432/fabrica
-    FABRICA_RUNNER: temporal
-    FABRICA_AUTO_SCHEMA: "false"
-    FABRICA_AUTH_MODE: oidc
-    FABRICA_OIDC_ISSUER: http://localhost:8080/realms/fabrica
-    FABRICA_OIDC_JWKS_URL: http://keycloak:8080/realms/fabrica/protocol/openid-connect/certs
-    FABRICA_TEMPORAL_HOST: temporal:7233
   volumes:
     - fabrica-data:/data
   depends_on:
     postgres: { condition: service_healthy }
-    temporal: { condition: service_started }
-    keycloak: { condition: service_started }
+    temporal: { condition: service_healthy }
+    keycloak: { condition: service_healthy }
+
+x-mcp-env: &mcp-env
+  <<: *app-env
+  FABRICA_MCP_TRANSPORT: http
+  FABRICA_MCP_HOST: 0.0.0.0
 
 services:
   postgres:
@@ -36,85 +45,82 @@ services:
     image: temporalio/temporal:latest
     command: ["server", "start-dev", "--ip", "0.0.0.0", "--db-filename", "/data/temporal.db"]
     volumes: [temporal-data:/data]
+    healthcheck:
+      test: ["CMD", "temporal", "operator", "cluster", "health", "--address", "localhost:7233"]
+      interval: 5s
+      retries: 30
     ports: ["7233:7233", "8233:8233"]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    command: ["start-dev", "--import-realm", "--hostname", "http://localhost:8080", "--health-enabled", "true"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./config/keycloak:/opt/keycloak/data/import:ro
+      - keycloak-data:/opt/keycloak/data/h2
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 5s
+      retries: 40
+    ports: ["8080:8080"]
+
+  api:
+    <<: *app
+    command: ["sh", "-c", "fabrica-migrate upgrade && fabrica-api"]
+    environment:
+      <<: *app-env
+      FABRICA_KEYCLOAK_URL: http://keycloak:8080
+      FABRICA_KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      FABRICA_KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+    ports: ["8000:8000"]
+
+  worker:
+    <<: *app
+    command: ["fabrica-worker"]
+    environment: *app-env
+    healthcheck: { disable: true }
+    depends_on:
+      api: { condition: service_healthy }
+
+  mcp-fabrica:
+    <<: *app
+    command: ["fabrica-mcp-fabrica"]
+    environment:
+      <<: *mcp-env
+      FABRICA_MCP_PORT: "8101"
+    healthcheck: { disable: true }
+    depends_on:
+      api: { condition: service_healthy }
+    ports: ["8101:8101"]
+
+  mcp-sap:
+    <<: *app
+    command: ["fabrica-mcp-sap"]
+    environment:
+      <<: *mcp-env
+      FABRICA_MCP_PORT: "8102"
+    healthcheck: { disable: true }
+    depends_on:
+      api: { condition: service_healthy }
+    ports: ["8102:8102"]
+
+  mcp-conocimiento:
+    <<: *app
+    command: ["fabrica-mcp-conocimiento"]
+    environment:
+      <<: *mcp-env
+      FABRICA_MCP_PORT: "8103"
+    healthcheck: { disable: true }
+    depends_on:
+      api: { condition: service_healthy }
+    ports: ["8103:8103"]
 
   agente-imagen:
     profiles: ["agente"]
     build: { context: ., dockerfile: backend/Dockerfile.agente }
     image: fabrica-agente:latest
-
-  keycloak:
-    image: quay.io/keycloak/keycloak:26.4
-    command: ["start-dev", "--import-realm", "--hostname", "http://localhost:8080"]
-    environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: admin
-      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
-    volumes:
-      - ./config/keycloak:/opt/keycloak/data/import:ro
-    ports: ["8080:8080"]
-
-  api:
-    <<: *backend
-    command: ["sh", "-c", "fabrica-migrate upgrade && fabrica-api"]
-    ports: ["8000:8000"]
-
-  worker:
-    <<: *backend
-    command: ["fabrica-worker"]
-
-  mcp-fabrica:
-    <<: *backend
-    command: ["fabrica-mcp-fabrica"]
-    environment:
-      FABRICA_DATABASE_URL: postgresql+asyncpg://fabrica:fabrica@postgres:5432/fabrica
-      FABRICA_AUTO_SCHEMA: "false"
-      FABRICA_AUTH_MODE: oidc
-      FABRICA_OIDC_ISSUER: http://localhost:8080/realms/fabrica
-      FABRICA_OIDC_JWKS_URL: http://keycloak:8080/realms/fabrica/protocol/openid-connect/certs
-      FABRICA_MCP_TRANSPORT: http
-      FABRICA_MCP_HOST: 0.0.0.0
-      FABRICA_MCP_PORT: "8101"
-    ports: ["8101:8101"]
-
-  mcp-sap:
-    <<: *backend
-    command: ["fabrica-mcp-sap"]
-    environment:
-      FABRICA_DATABASE_URL: postgresql+asyncpg://fabrica:fabrica@postgres:5432/fabrica
-      FABRICA_AUTO_SCHEMA: "false"
-      FABRICA_AUTH_MODE: oidc
-      FABRICA_OIDC_ISSUER: http://localhost:8080/realms/fabrica
-      FABRICA_OIDC_JWKS_URL: http://keycloak:8080/realms/fabrica/protocol/openid-connect/certs
-      FABRICA_MCP_TRANSPORT: http
-      FABRICA_MCP_HOST: 0.0.0.0
-      FABRICA_MCP_PORT: "8102"
-    ports: ["8102:8102"]
-
-  mcp-conocimiento:
-    <<: *backend
-    command: ["fabrica-mcp-conocimiento"]
-    environment:
-      FABRICA_DATABASE_URL: postgresql+asyncpg://fabrica:fabrica@postgres:5432/fabrica
-      FABRICA_AUTO_SCHEMA: "false"
-      FABRICA_AUTH_MODE: oidc
-      FABRICA_OIDC_ISSUER: http://localhost:8080/realms/fabrica
-      FABRICA_OIDC_JWKS_URL: http://keycloak:8080/realms/fabrica/protocol/openid-connect/certs
-      FABRICA_MCP_TRANSPORT: http
-      FABRICA_MCP_HOST: 0.0.0.0
-      FABRICA_MCP_PORT: "8103"
-    ports: ["8103:8103"]
-
-  web:
-    image: node:22-alpine
-    working_dir: /app
-    command: sh -c "npm install --no-audit --no-fund && npx vite --host 0.0.0.0 --port 5173"
-    environment:
-      FABRICA_API: http://api:8000
-    volumes:
-      - ./web:/app
-      - web-node-modules:/app/node_modules
-    ports: ["5173:5173"]
-    depends_on: [api]
 
   gitea:
     profiles: ["gitea"]
@@ -129,6 +135,6 @@ services:
 volumes:
   pg-data:
   temporal-data:
+  keycloak-data:
   fabrica-data:
   gitea-data:
-  web-node-modules:

@@ -1,28 +1,39 @@
-.PHONY: install api web worker test lint check up down mcp-fabrica mcp-sap mcp-conocimiento
+.PHONY: install dev infra up down logs ps usuario replay test lint check
 
 BACKEND := cd backend &&
+USUARIO ?=
+EMAIL ?=
+ROL ?= funcional
+CASOS ?=
 
 install:
 	$(BACKEND) uv sync --extra dev
 	cd web && npm install
 
-api:
-	$(BACKEND) uv run uvicorn fabrica.api.app:app --reload --port 8000
+dev:
+	./scripts/dev.sh
 
-web:
-	cd web && npm run dev
+infra:
+	docker compose up -d --wait postgres temporal keycloak
 
-worker:
-	$(BACKEND) uv run fabrica-worker
+up:
+	docker compose up -d --build --wait
+	@docker compose ps
 
-mcp-fabrica:
-	$(BACKEND) uv run fabrica-mcp-fabrica
+down:
+	docker compose down
 
-mcp-sap:
-	$(BACKEND) uv run fabrica-mcp-sap
+logs:
+	docker compose logs -f api worker
 
-mcp-conocimiento:
-	$(BACKEND) uv run fabrica-mcp-conocimiento
+ps:
+	docker compose ps
+
+usuario:
+	docker compose exec api fabrica-usuario --usuario $(USUARIO) --email $(EMAIL) $(foreach r,$(ROL),--rol $(r))
+
+replay:
+	docker compose exec -T api fabrica-replay /dev/stdin < $(CASOS)
 
 test:
 	$(BACKEND) uv run pytest -q
@@ -32,9 +43,3 @@ lint:
 	cd web && npm run typecheck
 
 check: lint test
-
-up:
-	docker compose up --build
-
-down:
-	docker compose down
