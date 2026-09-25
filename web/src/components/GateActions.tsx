@@ -35,7 +35,11 @@ export function GateActions({ session, requirement, stage, onDecide, onResume }:
   if (!isGate && !canDiscard && !blocked) return null;
 
   return (
-    <div className="gate">
+    <div className="card gate">
+      {isGate && canDecide && (
+        <strong>Te toca decidir en {stage.label}</strong>
+      )}
+      {blocked && <strong>⛔ La etapa está en pausa: revisa la conversación y reintenta</strong>}
       {isGate && !canDecide && (
         <p className="muted">
           Espera decisión de: <strong>{stage.roles.join(" o ")}</strong>
@@ -52,13 +56,13 @@ export function GateActions({ session, requirement, stage, onDecide, onResume }:
         {canDecide && (
           <>
             <button onClick={() => run(() => onDecide("approve", comment))}>✅ Aprobar</button>
-            <button className="secondary" onClick={() => run(() => onDecide("reject", comment))}>
+            <button className="outline" onClick={() => run(() => onDecide("reject", comment))}>
               ↩️ Devolver
             </button>
           </>
         )}
         {blocked && (
-          <button className="secondary" onClick={() => run(onResume)}>
+          <button className="outline" onClick={() => run(onResume)}>
             ▶ Reintentar etapa
           </button>
         )}

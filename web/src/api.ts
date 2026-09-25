@@ -5,6 +5,7 @@ import type {
   NewRequirement,
   Outcome,
   Portfolio,
+  RepoFile,
   Requirement,
   RequirementDetail,
   Stage,
@@ -77,6 +78,8 @@ export const api = {
         { title: data.title, description: data.description, project: data.project },
       ),
     }),
+  file: (s: Session, id: number, path: string) =>
+    request<RepoFile>(s, `/api/requirements/${id}/file?path=${encodeURIComponent(path)}`),
   documents: (s: Session, id: number) =>
     request<DocumentFile[]>(s, `/api/requirements/${id}/documents`),
   addDocuments: (s: Session, id: number, files: File[]) =>

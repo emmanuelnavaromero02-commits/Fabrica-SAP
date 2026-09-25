@@ -1,19 +1,27 @@
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { api } from "./api";
 import type { Session } from "./auth";
-import { NewRequirementForm } from "./components/NewRequirementForm";
+import { KanbanBoard } from "./components/KanbanBoard";
+import { NewRequirementModal } from "./components/NewRequirementModal";
 import { PortfolioView } from "./components/PortfolioView";
-import { RequirementList } from "./components/RequirementList";
 import { RequirementView } from "./components/RequirementView";
 import { SessionGate } from "./components/SessionGate";
 import { TimeView } from "./components/TimeView";
+import { ThemeToggle } from "./components/ui/ThemeToggle";
+import { ToastProvider, useToast } from "./components/ui/Toasts";
 import { useActivityHeartbeat, usePolling, useStored } from "./hooks";
 import type { Stage } from "./types";
 
-type View = "requisitos" | "portafolio" | "tiempo";
+type View = "tablero" | "requisito" | "portafolio" | "tiempo";
 
 const SUPERVISORS = ["admin", "lider"];
+const TITLES: Record<View, string> = {
+  tablero: "Tablero de la fábrica",
+  requisito: "Requisito",
+  portafolio: "Portafolio",
+  tiempo: "Tiempo trabajado",
+};
 
 function linkedRequirement(): number | null {
   const value = new URLSearchParams(window.location.search).get("requisito");
@@ -21,17 +29,24 @@ function linkedRequirement(): number | null {
 }
 
 export function App() {
-  return <SessionGate>{(session, bar) => <Workspace session={session} bar={bar} />}</SessionGate>;
+  return (
+    <ToastProvider>
+      <SessionGate>{(session, bar) => <Workspace session={session} bar={bar} />}</SessionGate>
+    </ToastProvider>
+  );
 }
 
 function Workspace({ session, bar }: { session: Session; bar: ReactNode }) {
-  const [view, setView] = useState<View>("requisitos");
+  const [view, setView] = useState<View>(linkedRequirement() ? "requisito" : "tablero");
   const [selected, setSelected] = useStored<number | null>("fabrica.selected", null);
   const [stages, setStages] = useState<Stage[]>([]);
+  const [creating, setCreating] = useState(false);
+  const [query, setQuery] = useState("");
   const list = usePolling(() => api.list(session), 3000);
+  const notify = useToast();
   const supervisor = SUPERVISORS.includes(session.role);
 
-  useActivityHeartbeat(() => api.heartbeat(session, view === "requisitos" ? selected : null));
+  useActivityHeartbeat(() => api.heartbeat(session, view === "requisito" ? selected : null));
 
   useEffect(() => {
     const linked = linkedRequirement();
@@ -42,69 +57,91 @@ function Workspace({ session, bar }: { session: Session; bar: ReactNode }) {
     api.stages(session).then(setStages, () => setStages([]));
   }, [session.user, session.role]);
 
+  const items = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const all = list.data ?? [];
+    return q ? all.filter((r) => `#${r.id} ${r.title} ${r.capability ?? ""}`.toLowerCase().includes(q)) : all;
+  }, [list.data, query]);
+
   const open = (id: number) => {
     setSelected(id);
-    setView("requisitos");
+    setView("requisito");
   };
 
+  const navItems: { key: View; label: string; show: boolean }[] = [
+    { key: "tablero", label: "🗂️ Tablero", show: true },
+    { key: "requisito", label: "📄 Requisito abierto", show: selected !== null },
+    { key: "portafolio", label: "📊 Portafolio", show: supervisor },
+    { key: "tiempo", label: "⏱️ Tiempo", show: true },
+  ];
+
   return (
-    <div className="app">
-      <header className="topbar">
-        <h1>🏭 Fábrica SAP</h1>
-        <nav className="views">
-          <button className={view === "requisitos" ? "tab active" : "tab"} onClick={() => setView("requisitos")}>
-            Requisitos
-          </button>
-          {supervisor && (
-            <button className={view === "portafolio" ? "tab active" : "tab"} onClick={() => setView("portafolio")}>
-              Portafolio
+    <div className="shell">
+      <nav className="nav" aria-label="Principal">
+        <div className="brand">
+          <span className="brand-mark" aria-hidden>
+            🏭
+          </span>
+          Fábrica SAP
+        </div>
+        {navItems
+          .filter((n) => n.show)
+          .map((n) => (
+            <button key={n.key} className={view === n.key ? "active" : ""} onClick={() => setView(n.key)}>
+              {n.label}
             </button>
-          )}
-          <button className={view === "tiempo" ? "tab active" : "tab"} onClick={() => setView("tiempo")}>
-            Tiempo
-          </button>
-        </nav>
-        {bar}
-      </header>
-      {view === "portafolio" && supervisor && (
-        <main className="single">
-          <PortfolioView session={session} onOpen={open} />
-        </main>
-      )}
-      {view === "tiempo" && (
-        <main className="single">
-          <TimeView session={session} />
-        </main>
-      )}
-      {view === "requisitos" && (
-        <main className="layout">
-          <aside className="sidebar">
-            <NewRequirementForm
-              onCreate={async (data, files) => {
-                const created = files.length
-                  ? await api.createWithFiles(session, data, files)
-                  : await api.create(session, data);
-                setSelected(created.id);
-                await list.refresh();
-              }}
+          ))}
+        <span className="spacer" />
+        <div className="nav-foot">
+          <ThemeToggle />
+        </div>
+      </nav>
+      <div className="main">
+        <header className="topbar">
+          <h1>{TITLES[view]}</h1>
+          {view === "tablero" && (
+            <input
+              className="search"
+              placeholder="Buscar por número, título o módulo…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
             />
-            {list.error && <p className="error">API no disponible: {list.error}</p>}
-            <RequirementList items={list.data ?? []} stages={stages} selected={selected} onSelect={setSelected} />
-          </aside>
-          <section className="content">
-            {selected ? (
-              <RequirementView
-                key={selected}
-                session={session}
-                id={selected}
-                stages={stages}
-                onChanged={() => void list.refresh()}
-              />
-            ) : (
-              <p className="muted">Selecciona un requisito o crea uno nuevo.</p>
-            )}
+          )}
+          <span className="grow" />
+          <button onClick={() => setCreating(true)}>＋ Nuevo requisito</button>
+          {bar}
+        </header>
+        {list.error && <p className="error page">No se pudo conectar con el API: {list.error}</p>}
+        {view === "tablero" && (
+          <section className="page">
+            <KanbanBoard items={items} stages={stages} selected={selected} onOpen={open} />
           </section>
-        </main>
+        )}
+        {view === "requisito" && selected !== null && (
+          <RequirementView
+            key={selected}
+            session={session}
+            id={selected}
+            stages={stages}
+            onBack={() => setView("tablero")}
+            onChanged={() => void list.refresh()}
+          />
+        )}
+        {view === "portafolio" && supervisor && <PortfolioView session={session} stages={stages} onOpen={open} />}
+        {view === "tiempo" && <TimeView session={session} />}
+      </div>
+      {creating && (
+        <NewRequirementModal
+          onClose={() => setCreating(false)}
+          onCreate={async (data, files) => {
+            const created = files.length
+              ? await api.createWithFiles(session, data, files)
+              : await api.create(session, data);
+            notify(`Requisito #${created.id} enviado a la fábrica`);
+            await list.refresh();
+            open(created.id);
+          }}
+        />
       )}
     </div>
   );

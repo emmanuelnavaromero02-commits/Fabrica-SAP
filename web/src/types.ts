@@ -106,6 +106,22 @@ export interface DocumentFile {
   content: string;
 }
 
+export interface SapCall {
+  id: number;
+  system: string;
+  tool: string;
+  object_name: string;
+  actor: string;
+  ok: boolean;
+  detail: string;
+  created_at: string;
+}
+
+export interface RepoFile {
+  path: string;
+  content: string;
+}
+
 export interface RequirementDetail {
   requirement: Requirement;
   messages: Message[];
@@ -114,6 +130,7 @@ export interface RequirementDetail {
   artifacts: Artifact[];
   transports: Transport[];
   estimate: Estimate | null;
+  sap_calls: SapCall[];
 }
 
 export interface Stage {

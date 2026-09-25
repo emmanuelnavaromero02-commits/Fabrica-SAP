@@ -20,11 +20,13 @@ export function DocumentsPanel({ session, id }: { session: Session; id: number }
   }
 
   return (
-    <div>
-      <label className="files">
-        📎 Agregar documentos
+    <div className="card">
+      <label className="dropzone">
+        <strong>📎 Agregar documentos al requisito</strong>
+        <span className="muted">Si el requisito estaba en pausa sin preguntas abiertas, la fábrica lo retoma</span>
         <input type="file" multiple onChange={(e) => void upload(Array.from(e.target.files ?? []))} />
       </label>
+      {data && data.length === 0 && <p className="empty">Sin documentos de entrada.</p>}
       {error && <p className="error">{error}</p>}
       <ul className="docs">
         {(data ?? []).map((d) => (

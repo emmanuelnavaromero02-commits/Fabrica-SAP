@@ -36,6 +36,23 @@ export function SessionGate({ children }: { children: Render }) {
 
 function HeaderSession({ render }: { render: Render }) {
   const [who, setWho] = useStored<Identity>("fabrica.identity", { user: "", role: "funcional" });
+  const [draft, setDraft] = useState<Identity>(who);
+  if (!who.user.trim()) {
+    return (
+      <form
+        className="login"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (draft.user.trim()) setWho({ ...draft, user: draft.user.trim() });
+        }}
+      >
+        <h1>🏭 Fábrica SAP</h1>
+        <p className="muted">Acceso por cabeceras: indica tu usuario y el rol con el que vas a trabajar.</p>
+        <IdentityBar who={draft} onChange={setDraft} />
+        <button type="submit">Entrar</button>
+      </form>
+    );
+  }
   return <>{render(headerSession(who), <IdentityBar who={who} onChange={setWho} />)}</>;
 }
 
