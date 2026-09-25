@@ -29,7 +29,18 @@ class RequirementIn(BaseModel):
     project: str = "demo"
     capability: str | None = None
     ricefw: str | None = None
+    priority: str = "media"
+    due_date: datetime | None = None
     documents: list[DocumentIn] = Field(default_factory=list)
+
+
+class PriorityUpdateIn(BaseModel):
+    priority: str = Field(pattern="^(urgente|alta|media|baja)$")
+    due_date: datetime | None = None
+
+
+class SizeUpdateIn(BaseModel):
+    size: str = Field(pattern="^(tiny|small|medium|large|very_large)$")
 
 
 class RequirementOut(ORM):
@@ -39,6 +50,8 @@ class RequirementOut(ORM):
     project: str
     capability: str | None
     ricefw: str | None
+    priority: str = "media"
+    due_date: datetime | None = None
     stage: str
     state: str
     created_by: str
@@ -53,6 +66,7 @@ class RequirementOut(ORM):
 
 class MessageOut(ORM):
     id: int
+    requirement_id: int
     thread: str
     sender: str
     recipient: str | None

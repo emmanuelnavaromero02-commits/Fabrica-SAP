@@ -187,3 +187,80 @@ async def test_technical_dossier(api: Any) -> None:
     assert "ABAP Test Cockpit (ATC)" in html_text
     assert "Pruebas Unitarias (AUnit)" in html_text
     assert "Consultor Funcional SAP" in html_text
+
+
+async def test_requirement_priority_and_size(api: Any) -> None:
+    client, runner = api
+    create_resp = await client.post(
+        "/api/requirements",
+        json={
+            "title": "Ajuste de Precios SAP",
+            "description": "Calculo de precios para ventas.",
+            "priority": "alta",
+            "due_date": "2026-10-01T12:00:00Z",
+        },
+        headers=who("ana", "funcional"),
+    )
+    assert create_resp.status_code == 201
+    req_id = create_resp.json()["id"]
+
+    detail_resp = await client.get(
+        f"/api/requirements/{req_id}", headers=who("ana", "funcional")
+    )
+    assert detail_resp.status_code == 200
+    assert detail_resp.json()["requirement"]["priority"] == "alta"
+
+    prio_resp = await client.post(
+        f"/api/requirements/{req_id}/priority",
+        json={"priority": "urgente", "due_date": "2026-10-05T00:00:00Z"},
+        headers=who("ana", "lider"),
+    )
+    assert prio_resp.status_code == 204
+
+    detail_resp2 = await client.get(
+        f"/api/requirements/{req_id}", headers=who("ana", "funcional")
+    )
+    assert detail_resp2.json()["requirement"]["priority"] == "urgente"
+
+    size_resp = await client.post(
+        f"/api/requirements/{req_id}/size",
+        json={"size": "large"},
+        headers=who("ana", "lider"),
+    )
+    assert size_resp.status_code == 200
+    assert size_resp.json()["hours_total"] == 80.0
+
+    detail_resp3 = await client.get(
+        f"/api/requirements/{req_id}", headers=who("ana", "funcional")
+    )
+    assert detail_resp3.json()["estimate"]["hours_total"] == 80.0
+
+
+async def test_inbox_endpoint(api: Any) -> None:
+    client, runner = api
+    create_resp1 = await client.post(
+        "/api/requirements",
+        json={"title": "Tarea Asignada", "description": "Tarea especifica asignada a un usuario."},
+        headers=who("roberto", "funcional"),
+    )
+    req1_id = create_resp1.json()["id"]
+    await client.post(f"/api/requirements/{req1_id}/claim", headers=who("roberto", "funcional"))
+
+    create_resp2 = await client.post(
+        "/api/requirements",
+        json={"title": "Tarea Libre", "description": "Tarea en la bolsa general sin reclamar."},
+        headers=who("laura", "funcional"),
+    )
+    assert create_resp2.status_code == 201
+
+    inbox_resp = await client.get("/api/inbox", headers=who("roberto", "funcional"))
+    assert inbox_resp.status_code == 200
+    data = inbox_resp.json()
+    assert isinstance(data["assigned"], list)
+    assert isinstance(data["pool"], list)
+    assert isinstance(data["waiting_gates"], list)
+    assert isinstance(data["open_questions"], list)
+
+    assigned_ids = [r["id"] for r in data["assigned"]]
+    assert req1_id in assigned_ids
+

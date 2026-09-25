@@ -1,6 +1,6 @@
 import { type DragEvent, type FormEvent, useRef, useState } from "react";
 
-import type { NewRequirement } from "../types";
+import type { NewRequirement, Priority } from "../types";
 import { errorText } from "../errors";
 
 interface Props {
@@ -14,6 +14,8 @@ export function NewRequirementModal({ onClose, onCreate }: Props) {
   const [project, setProject] = useState("demo");
   const [ricefw, setRicefw] = useState("Reporte");
   const [capability, setCapability] = useState("FI");
+  const [priority, setPriority] = useState<Priority>("media");
+  const [dueDate, setDueDate] = useState("");
   const [spec, setSpec] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const pressedOnBackdrop = useRef(false);
@@ -37,7 +39,19 @@ export function NewRequirementModal({ onClose, onCreate }: Props) {
       const documents = spec.trim()
         ? [{ name: "especificacion", kind: "especificacion", content: spec.trim() }]
         : [];
-      await onCreate({ title, description, project, capability, ricefw, documents }, files);
+      await onCreate(
+        {
+          title,
+          description,
+          project,
+          capability,
+          ricefw,
+          priority,
+          due_date: dueDate ? new Date(dueDate).toISOString() : null,
+          documents,
+        },
+        files,
+      );
       onClose();
     } catch (err) {
       setError(errorText(err));
@@ -95,6 +109,25 @@ export function NewRequirementModal({ onClose, onCreate }: Props) {
               value={capability}
               onChange={(e) => setCapability(e.target.value.toUpperCase())}
               placeholder="FI, MM, SD"
+            />
+          </label>
+        </div>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <label style={{ flex: 1 }}>
+            Prioridad
+            <select value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>
+              <option value="urgente">🔥 Urgente</option>
+              <option value="alta">⚡ Alta</option>
+              <option value="media">🔷 Media</option>
+              <option value="baja">☕ Baja</option>
+            </select>
+          </label>
+          <label style={{ flex: 1 }}>
+            Fecha límite (SLA)
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
             />
           </label>
         </div>

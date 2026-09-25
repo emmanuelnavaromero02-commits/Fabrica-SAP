@@ -19,10 +19,12 @@ from fabrica.domain.schemas import (
     EstimateOut,
     FileOut,
     MessageOut,
+    PriorityUpdateIn,
     RequirementDetail,
     RequirementIn,
     RequirementOut,
     SapCallOut,
+    SizeUpdateIn,
     TransferIn,
     TransportOut,
 )
@@ -146,6 +148,27 @@ async def release_task(req_id: int, who: Who) -> None:
             await commands.release(Board(s), req_id, who)
     except LookupError as exc:
         raise HTTPException(404, str(exc)) from exc
+
+
+@router.post("/{req_id}/priority", status_code=204)
+async def set_priority(req_id: int, data: PriorityUpdateIn, who: Who) -> None:
+    try:
+        async with session_scope() as s:
+            await commands.update_priority(Board(s), req_id, data.priority, data.due_date, who)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@router.post("/{req_id}/size", response_model=EstimateOut)
+async def set_size(req_id: int, data: SizeUpdateIn, who: Who) -> EstimateOut:
+    try:
+        async with session_scope() as s:
+            estimate = await commands.update_size(Board(s), req_id, data.size, who)
+            return EstimateOut.model_validate(estimate)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 @router.get("/{req_id}/dossier", response_class=HTMLResponse)

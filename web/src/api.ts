@@ -5,14 +5,17 @@ import type {
   Client,
   DocumentFile,
   Identity,
+  Inbox,
   NewRequirement,
   Outcome,
   Portfolio,
+  Priority,
   Project,
   RepoFile,
   Requirement,
   RequirementDetail,
   Stage,
+  StandardSize,
   TimeRow,
 } from "./types";
 
@@ -131,5 +134,10 @@ export const api = {
     const q = s ? `?user=${encodeURIComponent(s.user)}&role=${encodeURIComponent(s.role)}` : "";
     return `/api/requirements/${id}/dossier${q}`;
   },
+  inbox: (s: Session) => request<Inbox>(s, "/api/inbox"),
+  setPriority: (s: Session, id: number, priority: Priority, dueDate?: string | null) =>
+    request<void>(s, `/api/requirements/${id}/priority`, post({ priority, due_date: dueDate || null })),
+  setSize: (s: Session, id: number, size: StandardSize) =>
+    request<void>(s, `/api/requirements/${id}/size`, post({ size })),
 };
 

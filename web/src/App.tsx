@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { api } from "./api";
 import type { Session } from "./auth";
 import { KanbanBoard } from "./components/KanbanBoard";
+import { InboxView } from "./components/InboxView";
 import { NewRequirementModal } from "./components/NewRequirementModal";
 import { PortfolioView } from "./components/PortfolioView";
 import { RequirementView } from "./components/RequirementView";
@@ -13,11 +14,12 @@ import { ToastProvider, useToast } from "./components/ui/Toasts";
 import { useActivityHeartbeat, usePolling, useStored } from "./hooks";
 import type { Stage } from "./types";
 
-type View = "tablero" | "requisito" | "portafolio" | "tiempo";
+type View = "tablero" | "bandeja" | "requisito" | "portafolio" | "tiempo";
 
 const SUPERVISORS = ["admin", "lider"];
 const TITLES: Record<View, string> = {
   tablero: "Tablero de la fábrica",
+  bandeja: "Mi Bandeja de Trabajo",
   requisito: "Requisito",
   portafolio: "Portafolio",
   tiempo: "Tiempo trabajado",
@@ -81,6 +83,7 @@ function Workspace({ session, bar }: { session: Session; bar: ReactNode }) {
 
   const navItems: { key: View; label: string; show: boolean }[] = [
     { key: "tablero", label: "🗂️ Tablero", show: true },
+    { key: "bandeja", label: "📥 Mi Bandeja", show: true },
     { key: "requisito", label: "📄 Requisito abierto", show: selected !== null },
     { key: "portafolio", label: "📊 Portafolio", show: supervisor },
     { key: "tiempo", label: "⏱️ Tiempo", show: true },
@@ -168,6 +171,13 @@ function Workspace({ session, bar }: { session: Session; bar: ReactNode }) {
           <section className="page">
             <KanbanBoard items={items} stages={stages} selected={selected} onOpen={open} />
           </section>
+        )}
+        {view === "bandeja" && (
+          <InboxView
+            session={session}
+            onOpen={open}
+            onChanged={() => void list.refresh()}
+          />
         )}
         {view === "requisito" && selected !== null && (
           <RequirementView

@@ -143,10 +143,12 @@ class Steps:
         }
         if out.output.get("prototype_html"):
             save_files["diseno/prototipo.html"] = out.output["prototype_html"]
+        if out.output.get("test_plan_markdown"):
+            save_files["diseno/plan_de_pruebas.md"] = out.output["test_plan_markdown"]
         await self._save(
             req,
             save_files,
-            "Diseño: especificación, aseveraciones, prototipo y estimación",
+            "Diseño: especificación, prototipo, plan de pruebas y estimación",
             roles.ARQUITECTO.name,
         )
         return StepResult("advance")

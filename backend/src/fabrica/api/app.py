@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from fabrica.api import clients, documents, meta, projects, requirements, tracking
+from fabrica.api import clients, documents, inbox, meta, projects, requirements, tracking
 from fabrica.api.deps import build_verifier
 from fabrica.config import get_settings
 from fabrica.db.session import init_db
@@ -33,6 +33,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.include_router(inbox.router)
     app.include_router(clients.router)
     app.include_router(projects.router)
     app.include_router(documents.router)

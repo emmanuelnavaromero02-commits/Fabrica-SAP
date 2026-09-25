@@ -18,6 +18,9 @@ export interface Identity {
   roles?: Role[];
 }
 
+export type Priority = "urgente" | "alta" | "media" | "baja";
+export type StandardSize = "tiny" | "small" | "medium" | "large" | "very_large";
+
 export interface Requirement {
   id: number;
   title: string;
@@ -25,6 +28,8 @@ export interface Requirement {
   project: string;
   capability: string | null;
   ricefw: string | null;
+  priority: Priority;
+  due_date: string | null;
   stage: string;
   state: RunState;
   created_by: string;
@@ -39,6 +44,7 @@ export interface Requirement {
 
 export interface Message {
   id: number;
+  requirement_id: number;
   thread: string;
   sender: string;
   recipient: string | null;
@@ -151,6 +157,8 @@ export interface NewRequirement {
   project: string;
   capability?: string | null;
   ricefw?: string | null;
+  priority?: Priority;
+  due_date?: string | null;
   documents: { name: string; kind: string; content: string }[];
 }
 
@@ -226,3 +234,9 @@ export interface BillingSnapshot {
   created_at: string;
 }
 
+export interface Inbox {
+  assigned: Requirement[];
+  pool: Requirement[];
+  waiting_gates: Requirement[];
+  open_questions: Message[];
+}

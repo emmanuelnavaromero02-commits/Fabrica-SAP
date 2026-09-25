@@ -76,6 +76,17 @@ class SimulatedProvider:
                 "<body><header><h2>Fiori Launchpad</h2></header>"
                 "<main><div><p>Filtros y tabla ALV</p></div></main></body></html>"
             ),
+            "test_plan_markdown": (
+                f"# Plan de Pruebas Funcionales — {_title(prompt)}\n\n"
+                "## Escenario 1: Ejecución con filtros estándar (Caso Positivo)\n"
+                "- **Dado que:** Existen partidas en la sociedad seleccionada.\n"
+                "- **Cuando:** El usuario ejecuta el reporte con fecha del mes.\n"
+                "- **Entonces:** La tabla muestra los registros y el totalizador coincide.\n\n"
+                "## Escenario 2: Sin datos coincidentes (Caso Borde)\n"
+                "- **Dado que:** Se ingresa un rango sin movimientos.\n"
+                "- **Cuando:** Se presiona ejecutar.\n"
+                "- **Entonces:** El sistema emite el mensaje informativo de no datos.\n"
+            ),
             "objects": [{"name": name, "type": "PROG", "package": "ZFAB"}],
             "assertions": [
                 {

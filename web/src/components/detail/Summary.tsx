@@ -11,6 +11,8 @@ export function Summary({ data }: { data: RequirementDetail }) {
           <span>Proyecto <strong>{req.project}</strong></span>
           <span>Módulo <strong>{req.capability ?? "—"}</strong></span>
           <span>RICEFW <strong>{req.ricefw ?? "—"}</strong></span>
+          <span>Prioridad <strong style={{ textTransform: "capitalize" }}>{req.priority ?? "media"}</strong></span>
+          {req.due_date && <span>SLA <strong>{new Date(req.due_date).toLocaleDateString()}</strong></span>}
           <span>Creado por <strong>{req.created_by}</strong></span>
           <span>Alta <strong>{new Date(req.created_at).toLocaleDateString()}</strong></span>
         </div>

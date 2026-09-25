@@ -56,6 +56,8 @@ class Requirement(Base):
     holder_role: Mapped[str | None] = mapped_column(String(40), default=None)
     holder_user: Mapped[str | None] = mapped_column(String(80), default=None)
     holder_since: Mapped[datetime | None] = mapped_column(default=None)
+    priority: Mapped[str] = mapped_column(String(20), default="media", server_default="media")
+    due_date: Mapped[datetime | None] = mapped_column(default=None)
     created_at: Mapped[datetime] = mapped_column(default=now)
     updated_at: Mapped[datetime] = mapped_column(default=now, onupdate=now)
 

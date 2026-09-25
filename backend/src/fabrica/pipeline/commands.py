@@ -1,10 +1,39 @@
-from __future__ import annotations
+from datetime import datetime
+from typing import Any
 
 from fabrica.blackboard.service import Board
 from fabrica.catalog import stage_machine
-from fabrica.db.models import Decision, Document, MessageKind, Requirement, RunState
+from fabrica.db.models import Decision, Document, Estimate, MessageKind, Requirement, RunState
 from fabrica.domain.schemas import DecisionIn, Identity, RequirementIn
 from fabrica.domain.stages import decide
+
+STANDARD_SIZES: dict[str, dict[str, Any]] = {
+    "tiny": {
+        "complexity": "XS",
+        "hours_total": 8.0,
+        "breakdown": {"backend": 4.0, "frontend": 2.0, "pruebas": 1.0, "uat": 1.0},
+    },
+    "small": {
+        "complexity": "S",
+        "hours_total": 24.0,
+        "breakdown": {"backend": 12.0, "frontend": 4.0, "pruebas": 4.0, "uat": 4.0},
+    },
+    "medium": {
+        "complexity": "M",
+        "hours_total": 40.0,
+        "breakdown": {"backend": 20.0, "frontend": 8.0, "pruebas": 6.0, "uat": 6.0},
+    },
+    "large": {
+        "complexity": "L",
+        "hours_total": 80.0,
+        "breakdown": {"backend": 40.0, "frontend": 16.0, "pruebas": 12.0, "uat": 12.0},
+    },
+    "very_large": {
+        "complexity": "XL",
+        "hours_total": 120.0,
+        "breakdown": {"backend": 60.0, "frontend": 24.0, "pruebas": 18.0, "uat": 18.0},
+    },
+}
 
 
 async def create_requirement(board: Board, data: RequirementIn, who: Identity) -> Requirement:
@@ -15,6 +44,8 @@ async def create_requirement(board: Board, data: RequirementIn, who: Identity) -
         project=data.project,
         capability=data.capability,
         ricefw=data.ricefw,
+        priority=data.priority,
+        due_date=data.due_date,
         stage=first.key,
         state=RunState.RUNNING,
         created_by=who.user,
@@ -134,3 +165,43 @@ async def release(board: Board, req_id: int, who: Identity) -> None:
         kind=MessageKind.INFO,
         body=f"{who.user} devolvió el requisito al pool",
     )
+
+
+async def update_priority(
+    board: Board, req_id: int, priority: str, due_date: datetime | None, who: Identity
+) -> None:
+    req = await board.requirement(req_id)
+    req.priority = priority
+    req.due_date = due_date
+    msg = f"Prioridad actualizada a {priority}"
+    if due_date:
+        msg += f", fecha límite: {due_date.strftime('%Y-%m-%d')}"
+    await board.post(req.id, thread="flujo", sender=who.user, kind=MessageKind.INFO, body=msg)
+    await board.s.flush()
+
+
+async def update_size(board: Board, req_id: int, size: str, who: Identity) -> Estimate:
+    cfg = STANDARD_SIZES.get(size.lower())
+    if not cfg:
+        raise ValueError(f"Talla no reconocida: {size}")
+    req = await board.requirement(req_id)
+    estimate = Estimate(
+        requirement_id=req.id,
+        complexity=cfg["complexity"],
+        hours_base=cfg["hours_total"],
+        hours_total=cfg["hours_total"],
+        days=round(cfg["hours_total"] / 8.0, 1),
+        breakdown=cfg["breakdown"],
+        assumptions=[f"Ajuste de talla a {size.upper()} por {who.user}"],
+        items=[{"object": req.title, "size": cfg["complexity"], "hours": cfg["hours_total"]}],
+    )
+    board.s.add(estimate)
+    await board.post(
+        req.id,
+        thread="flujo",
+        sender=who.user,
+        kind=MessageKind.INFO,
+        body=f"Talla ajustada a {size.upper()} ({cfg['hours_total']} h) por {who.user}",
+    )
+    await board.s.flush()
+    return estimate

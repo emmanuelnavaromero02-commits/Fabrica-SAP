@@ -3,7 +3,7 @@ import { useState } from "react";
 import { api } from "../api";
 import type { Session } from "../auth";
 import { usePolling } from "../hooks";
-import type { Outcome, Stage } from "../types";
+import type { Outcome, Priority, Stage, StandardSize } from "../types";
 import { Conversation } from "./detail/Conversation";
 import { Deliverables } from "./detail/Deliverables";
 import { EscalationLadder } from "./detail/EscalationLadder";
@@ -115,6 +115,66 @@ export function RequirementView({ session, id, stages, onBack, onChanged }: Prop
               </button>
             </>
           )}
+        </div>
+      </div>
+      <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 16px", marginBottom: "12px", flexWrap: "wrap", gap: "10px" }}>
+        <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px" }}>
+            <span>Prioridad:</span>
+            <select
+              value={req.priority || "media"}
+              onChange={(e) =>
+                after(
+                  api.setPriority(session, id, e.target.value as Priority, req.due_date),
+                  "Prioridad actualizada"
+                )
+              }
+            >
+              <option value="urgente">🔥 Urgente</option>
+              <option value="alta">⚡ Alta</option>
+              <option value="media">🔷 Media</option>
+              <option value="baja">☕ Baja</option>
+            </select>
+          </label>
+          <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px" }}>
+            <span>SLA / Entrega:</span>
+            <input
+              type="date"
+              value={req.due_date ? req.due_date.slice(0, 10) : ""}
+              onChange={(e) =>
+                after(
+                  api.setPriority(
+                    session,
+                    id,
+                    req.priority,
+                    e.target.value ? new Date(e.target.value).toISOString() : null
+                  ),
+                  "Fecha límite actualizada"
+                )
+              }
+            />
+          </label>
+        </div>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px" }}>
+            <span>Tamaño RICEFW:</span>
+            <select
+              defaultValue=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  after(api.setSize(session, id, e.target.value as StandardSize), `Dimensionado a ${e.target.value}`);
+                  e.target.value = "";
+                }
+              }}
+            >
+              <option value="" disabled>Seleccionar estándar…</option>
+              <option value="tiny">Tiny (XS · 8h)</option>
+              <option value="small">Small (S · 24h)</option>
+              <option value="medium">Medium (M · 40h)</option>
+              <option value="large">Large (L · 80h)</option>
+              <option value="very_large">Very Large (XL · 120h)</option>
+            </select>
+          </label>
         </div>
       </div>
       <Stepper stages={stages} current={req.stage} messages={data.messages} />
