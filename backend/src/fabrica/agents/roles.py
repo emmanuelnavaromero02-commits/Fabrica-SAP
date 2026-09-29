@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 
-def _obj(props: dict[str, Any]) -> dict[str, Any]:
+def schema_object(props: dict[str, Any]) -> dict[str, Any]:
     return {
         "type": "object",
         "properties": props,
@@ -13,10 +13,10 @@ def _obj(props: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-_STR = {"type": "string"}
-_STRS = {"type": "array", "items": _STR}
+STRING = {"type": "string"}
+STRINGS = {"type": "array", "items": STRING}
 
-_COMMON = (
+COMMON_RULES = (
     "Trabajas en una fábrica de software SAP (S/4HANA, Clean Core). "
     "Responde SOLO con el JSON pedido. Si te falta información, dilo en el campo previsto; "
     "nunca inventes datos del cliente."
@@ -34,11 +34,11 @@ class AgentRole:
 CLASIFICADOR = AgentRole(
     "clasificador",
     "clasificar",
-    f"{_COMMON} Clasifica el requisito: módulo SAP (capability: FI, CO, MM, SD, PP, QM, PS, "
+    f"{COMMON_RULES} Clasifica el requisito: módulo SAP (capability: FI, CO, MM, SD, PP, QM, PS, "
     "HCM, EAM, TM, BASIS) y tipo RICEFW (R, I, C, E, F, W).",
-    _obj(
+    schema_object(
         {
-            "capability": _STR,
+            "capability": STRING,
             "ricefw": {"type": "string", "enum": ["R", "I", "C", "E", "F", "W"]},
             "confidence": {"type": "number"},
         }
@@ -48,90 +48,8 @@ CLASIFICADOR = AgentRole(
 ANALISTA = AgentRole(
     "analista",
     "analizar",
-    f"{_COMMON} Eres analista funcional. Lee el requisito y sus documentos. Resume el "
+    f"{COMMON_RULES} Eres analista funcional. Lee el requisito y sus documentos. Resume el "
     "alcance, lista lo que falta y formula preguntas concretas al cliente solo si bloquean el "
     "diseño.",
-    _obj({"summary": _STR, "missing": _STRS, "questions": _STRS}),
-)
-
-ARQUITECTO = AgentRole(
-    "arquitecto",
-    "disenar_spec",
-    f"{_COMMON} Eres arquitecto SAP. Escribe la especificación técnica en Markdown, "
-    "un prototipo interactivo en HTML (SAP Fiori), un plan de pruebas funcionales en Markdown, "
-    "declara los objetos a crear (solo paquetes Z/Y) y aseveraciones verificables: cada una "
-    "con un texto que el código DEBE contener (must_contain).",
-    _obj(
-        {
-            "spec_markdown": _STR,
-            "prototype_html": _STR,
-            "test_plan_markdown": _STR,
-            "objects": {
-                "type": "array",
-                "items": _obj(
-                    {
-                        "name": _STR,
-                        "type": {"type": "string", "enum": ["PROG", "CLAS", "INTF"]},
-                        "package": _STR,
-                    }
-                ),
-            },
-            "assertions": {
-                "type": "array",
-                "items": _obj({"id": _STR, "description": _STR, "must_contain": _STR}),
-            },
-        }
-    ),
-)
-
-ESTIMADOR = AgentRole(
-    "estimador",
-    "estimar",
-    f"{_COMMON} Eres líder técnico SAP. Asigna una talla (XS, S, M, L, XL) a cada objeto de la "
-    "spec según su esfuerzo real de construcción y pruebas. Justifica cada talla y lista las "
-    "asunciones. Las horas las calcula la fábrica a partir de las tallas.",
-    _obj(
-        {
-            "items": {
-                "type": "array",
-                "items": _obj(
-                    {
-                        "object": _STR,
-                        "size": {"type": "string", "enum": ["XS", "S", "M", "L", "XL"]},
-                        "rationale": _STR,
-                    }
-                ),
-            },
-            "assumptions": _STRS,
-        }
-    ),
-)
-
-DESARROLLADOR = AgentRole(
-    "desarrollador",
-    "implementar",
-    f"{_COMMON} Eres desarrollador ABAP senior. Implementa la spec en ABAP moderno "
-    "(sintaxis 7.5+, SQL con campos explícitos, sin SELECT *, sin SQL nativo) y cumple todas "
-    "las aseveraciones.",
-    _obj(
-        {
-            "files": {"type": "array", "items": _obj({"path": _STR, "content": _STR})},
-            "notes": _STR,
-        }
-    ),
-)
-
-REVISOR = AgentRole(
-    "revisor",
-    "revisar",
-    f"{_COMMON} Eres revisor ABAP adversarial. Busca errores reales: rendimiento, seguridad, "
-    "Clean Core y desvíos de la spec. Aprueba solo si no hay objeciones bloqueantes.",
-    _obj({"approved": {"type": "boolean"}, "objections": _STRS}),
-)
-
-DOCUMENTADOR = AgentRole(
-    "documentador",
-    "documentar",
-    f"{_COMMON} Redacta el manual técnico breve en Markdown a partir de la spec y el código.",
-    _obj({"markdown": _STR}),
+    schema_object({"summary": STRING, "missing": STRINGS, "questions": STRINGS}),
 )

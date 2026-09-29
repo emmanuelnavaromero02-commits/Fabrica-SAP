@@ -1,5 +1,3 @@
-default: MOCK-DEV
-systems:
-  MOCK-DEV:
-    kind: mock
+default: null
+systems: {}
 projects: {}

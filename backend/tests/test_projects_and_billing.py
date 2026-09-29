@@ -174,9 +174,7 @@ async def test_technical_dossier(api: Any) -> None:
     )
     req_id = create_resp.json()["id"]
 
-    dossier_resp = await client.get(
-        f"/api/requirements/{req_id}/dossier?user=ana&role=funcional"
-    )
+    dossier_resp = await client.get(f"/api/requirements/{req_id}/dossier?user=ana&role=funcional")
     assert dossier_resp.status_code == 200
     assert "text/html" in dossier_resp.headers["content-type"]
     html_text = dossier_resp.text
@@ -204,9 +202,7 @@ async def test_requirement_priority_and_size(api: Any) -> None:
     assert create_resp.status_code == 201
     req_id = create_resp.json()["id"]
 
-    detail_resp = await client.get(
-        f"/api/requirements/{req_id}", headers=who("ana", "funcional")
-    )
+    detail_resp = await client.get(f"/api/requirements/{req_id}", headers=who("ana", "funcional"))
     assert detail_resp.status_code == 200
     assert detail_resp.json()["requirement"]["priority"] == "alta"
 
@@ -217,9 +213,7 @@ async def test_requirement_priority_and_size(api: Any) -> None:
     )
     assert prio_resp.status_code == 204
 
-    detail_resp2 = await client.get(
-        f"/api/requirements/{req_id}", headers=who("ana", "funcional")
-    )
+    detail_resp2 = await client.get(f"/api/requirements/{req_id}", headers=who("ana", "funcional"))
     assert detail_resp2.json()["requirement"]["priority"] == "urgente"
 
     size_resp = await client.post(
@@ -230,9 +224,7 @@ async def test_requirement_priority_and_size(api: Any) -> None:
     assert size_resp.status_code == 200
     assert size_resp.json()["hours_total"] == 80.0
 
-    detail_resp3 = await client.get(
-        f"/api/requirements/{req_id}", headers=who("ana", "funcional")
-    )
+    detail_resp3 = await client.get(f"/api/requirements/{req_id}", headers=who("ana", "funcional"))
     assert detail_resp3.json()["estimate"]["hours_total"] == 80.0
 
 
@@ -263,4 +255,3 @@ async def test_inbox_endpoint(api: Any) -> None:
 
     assigned_ids = [r["id"] for r in data["assigned"]]
     assert req1_id in assigned_ids
-

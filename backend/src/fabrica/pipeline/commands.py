@@ -46,6 +46,7 @@ async def create_requirement(board: Board, data: RequirementIn, who: Identity) -
         ricefw=data.ricefw,
         priority=data.priority,
         due_date=data.due_date,
+        profile=data.profile,
         stage=first.key,
         state=RunState.RUNNING,
         created_by=who.user,

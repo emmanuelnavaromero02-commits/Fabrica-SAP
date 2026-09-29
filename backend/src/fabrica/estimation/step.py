@@ -3,11 +3,11 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from fabrica.agents import roles
 from fabrica.blackboard.service import Board
 from fabrica.db.models import Estimate, MessageKind, Requirement
 from fabrica.escalation.router import EscalationRouter
 from fabrica.estimation.calculator import compute, estimation_table
+from fabrica.estimation.role import ESTIMADOR
 from fabrica.llm.base import LLMRequest
 from fabrica.verifiers.base import Verification
 
@@ -37,9 +37,9 @@ async def estimate_requirement(
     out = await router.run(
         req.id,
         "estimar",
-        LLMRequest(system=roles.ESTIMADOR.system, prompt=prompt, schema=roles.ESTIMADOR.schema),
+        LLMRequest(system=ESTIMADOR.system, prompt=prompt, schema=ESTIMADOR.schema),
         EstimateVerifier(objects),
-        agent=roles.ESTIMADOR.name,
+        agent=ESTIMADOR.name,
     )
     if not out.passed or out.output is None:
         return None
@@ -58,7 +58,7 @@ async def estimate_requirement(
     await board.post(
         req.id,
         thread="estimar",
-        sender=roles.ESTIMADOR.name,
+        sender=ESTIMADOR.name,
         kind=MessageKind.PROPUESTA,
         body=f"Estimación: {result.hours_total} h ({result.days} días, complejidad "
         f"{result.complexity})",

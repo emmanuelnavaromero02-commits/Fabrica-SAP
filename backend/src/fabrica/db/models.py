@@ -58,6 +58,11 @@ class Requirement(Base):
     holder_since: Mapped[datetime | None] = mapped_column(default=None)
     priority: Mapped[str] = mapped_column(String(20), default="media", server_default="media")
     due_date: Mapped[datetime | None] = mapped_column(default=None)
+    profile: Mapped[str] = mapped_column(String(12), default="cloud", server_default="cloud")
+    planned_start: Mapped[datetime | None] = mapped_column(default=None)
+    planned_end: Mapped[datetime | None] = mapped_column(default=None)
+    progress_override: Mapped[int | None] = mapped_column(default=None)
+    hours_functional: Mapped[float | None] = mapped_column(default=None)
     created_at: Mapped[datetime] = mapped_column(default=now)
     updated_at: Mapped[datetime] = mapped_column(default=now, onupdate=now)
 
@@ -183,6 +188,10 @@ class Estimate(Base):
     hours_total: Mapped[float] = mapped_column(default=0.0)
     days: Mapped[float] = mapped_column(default=0.0)
     complexity: Mapped[str] = mapped_column(String(4))
+    work_packages: Mapped[list[Any] | None] = mapped_column(JSON, default=list)
+    contingency_pct: Mapped[float] = mapped_column(default=15.0, server_default="15")
+    version: Mapped[int] = mapped_column(default=1, server_default="1")
+    author: Mapped[str] = mapped_column(String(80), default="", server_default="")
     created_at: Mapped[datetime] = mapped_column(default=now)
 
 
@@ -242,3 +251,6 @@ class BillingSnapshot(Base):
     hours_billed: Mapped[float] = mapped_column(default=0.0)
     items: Mapped[list[Any]] = mapped_column(default=list)
     created_at: Mapped[datetime] = mapped_column(default=now)
+
+
+from fabrica.db import lifecycle_models as lifecycle_models  # noqa: E402

@@ -25,18 +25,14 @@ async def get_inbox(who: Who) -> InboxOut:
         req_rows = await s.scalars(select(Requirement).order_by(Requirement.id.desc()))
         all_reqs = list(req_rows.all())
 
-        assigned = [
-            RequirementOut.model_validate(r) for r in all_reqs if r.holder_user == who.user
-        ]
+        assigned = [RequirementOut.model_validate(r) for r in all_reqs if r.holder_user == who.user]
         pool = [
             RequirementOut.model_validate(r)
             for r in all_reqs
             if not r.holder_user and r.state != RunState.DONE
         ]
         waiting_gates = [
-            RequirementOut.model_validate(r)
-            for r in all_reqs
-            if r.state == RunState.WAITING_GATE
+            RequirementOut.model_validate(r) for r in all_reqs if r.state == RunState.WAITING_GATE
         ]
 
         q_rows = await s.scalars(

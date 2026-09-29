@@ -3,7 +3,25 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+RICEFW_WORDS = {
+    "R": "R",
+    "I": "I",
+    "C": "C",
+    "E": "E",
+    "F": "F",
+    "W": "W",
+    "REPORTE": "R",
+    "INTERFAZ": "I",
+    "CONVERSION": "C",
+    "CONVERSIÓN": "C",
+    "EXTENSION": "E",
+    "EXTENSIÓN": "E",
+    "MEJORA": "E",
+    "FORMULARIO": "F",
+    "WORKFLOW": "W",
+}
 
 
 class ORM(BaseModel):
@@ -31,7 +49,19 @@ class RequirementIn(BaseModel):
     ricefw: str | None = None
     priority: str = "media"
     due_date: datetime | None = None
+    profile: Literal["cloud", "classic"] = "cloud"
     documents: list[DocumentIn] = Field(default_factory=list)
+
+    @field_validator("ricefw", mode="before")
+    @classmethod
+    def _ricefw_letter(cls, value: object) -> str | None:
+        if value is None or value == "":
+            return None
+        text = str(value).strip().upper()
+        letter = RICEFW_WORDS.get(text, text[:1] if len(text) == 1 else "")
+        if letter not in RICEFW_WORDS.values():
+            raise ValueError(f"Tipo RICEFW inválido: {value}")
+        return letter
 
 
 class PriorityUpdateIn(BaseModel):
@@ -60,6 +90,11 @@ class RequirementOut(ORM):
     holder_role: str | None = None
     holder_user: str | None = None
     holder_since: datetime | None = None
+    profile: str = "cloud"
+    planned_start: datetime | None = None
+    planned_end: datetime | None = None
+    progress_override: int | None = None
+    hours_functional: float | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -137,6 +172,10 @@ class EstimateOut(ORM):
     hours_total: float
     days: float
     complexity: str
+    work_packages: list[dict[str, Any]] | None = None
+    contingency_pct: float = 15.0
+    version: int = 1
+    author: str = ""
     created_at: datetime
 
 
