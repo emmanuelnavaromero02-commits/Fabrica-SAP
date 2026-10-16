@@ -12,11 +12,12 @@ import { Stepper } from "./detail/Stepper";
 import { Summary } from "./detail/Summary";
 import { DocumentsPanel } from "./DocumentsPanel";
 import { GateActions } from "./GateActions";
+import { PrototypeViewer } from "./detail/PrototypeViewer";
 import { StateBadge } from "./StateBadge";
 import { errorText } from "../errors";
 import { useToast } from "./ui/Toasts";
 
-type Tab = "resumen" | "conversacion" | "entregables" | "escalamiento" | "documentos" | "sap";
+type Tab = "resumen" | "prototipo" | "conversacion" | "entregables" | "escalamiento" | "documentos" | "sap";
 
 interface Props {
   session: Session;
@@ -28,6 +29,7 @@ interface Props {
 
 export function RequirementView({ session, id, stages, onBack, onChanged }: Props) {
   const [tab, setTab] = useState<Tab>("resumen");
+  const [autoMode, setAutoMode] = useState<boolean>(true);
   const notify = useToast();
   const { data, error, refresh } = usePolling(() => api.detail(session, id), 2000);
 
@@ -37,6 +39,9 @@ export function RequirementView({ session, id, stages, onBack, onChanged }: Prop
   const req = data.requirement;
   const stage = stages.find((s) => s.key === req.stage);
   const openQuestions = data.messages.filter((m) => m.kind === "pregunta" && !m.resolved).length;
+  const hasPrototype = data.artifacts.some((a) => a.path === "diseno/prototipo.html");
+  const isTechnicalRole = ["abap", "lider", "admin"].includes(session.role);
+
   const after = async (action: Promise<void>, done: string) => {
     try {
       await action;
@@ -51,11 +56,18 @@ export function RequirementView({ session, id, stages, onBack, onChanged }: Prop
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "resumen", label: "Resumen" },
+    ...(hasPrototype || req.stage === "aprobacion_cliente"
+      ? [{ key: "prototipo" as Tab, label: "🎨 Prototipo Interactivo" }]
+      : []),
     { key: "conversacion", label: `Conversación${openQuestions ? ` (${openQuestions} ❓)` : ""}` },
     { key: "entregables", label: `Entregables (${new Set(data.artifacts.map((a) => a.path)).size})` },
-    { key: "escalamiento", label: "Escalamiento" },
+    ...(isTechnicalRole
+      ? [
+          { key: "escalamiento" as Tab, label: "Escalamiento" },
+          { key: "sap" as Tab, label: "SAP" },
+        ]
+      : []),
     { key: "documentos", label: "Documentos" },
-    { key: "sap", label: "SAP" },
   ];
 
   return (
@@ -69,6 +81,14 @@ export function RequirementView({ session, id, stages, onBack, onChanged }: Prop
         </h2>
         <StateBadge state={req.state} />
         <span className="chip num">IA ${req.spent_usd.toFixed(4)}</span>
+        <button
+          className={autoMode ? "button outline" : "ghost"}
+          onClick={() => setAutoMode(!autoMode)}
+          style={{ fontSize: "12px", padding: "4px 10px", borderRadius: "6px" }}
+          title={autoMode ? "Modo De Corrido activo: avanza fases automáticamente" : "Modo Manual activo"}
+        >
+          {autoMode ? "⚡ De Corrido (Auto)" : "✋ Modo Manual"}
+        </button>
         <a
           className="button outline"
           href={api.dossierUrl(req.id, session)}
@@ -79,6 +99,27 @@ export function RequirementView({ session, id, stages, onBack, onChanged }: Prop
           📄 Acta Técnica
         </a>
       </div>
+      {hasPrototype && (
+        <div
+          className="card"
+          style={{
+            background: "#e8f4fd",
+            border: "1px solid #0969da",
+            padding: "10px 16px",
+            marginBottom: "12px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <div>
+            <strong>🎨 Prototipo Interactivo SAP Listo:</strong> Simulación interactiva disponible para validación de negocio.
+          </div>
+          <button style={{ padding: "4px 12px", fontSize: "12px" }} onClick={() => setTab("prototipo")}>
+            Ver Prototipo
+          </button>
+        </div>
+      )}
       <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 16px", marginBottom: "12px" }}>
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           <span>⚽ <strong>Pelota:</strong></span>
@@ -201,6 +242,7 @@ export function RequirementView({ session, id, stages, onBack, onChanged }: Prop
         ))}
       </nav>
       {tab === "resumen" && <Summary data={data} />}
+      {tab === "prototipo" && <PrototypeViewer session={session} id={id} />}
       {tab === "conversacion" && (
         <Conversation
           messages={data.messages}

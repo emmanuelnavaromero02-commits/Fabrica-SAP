@@ -85,18 +85,42 @@ export function Conversation({ messages, onAnswer }: Props) {
   );
 }
 
+const QUICK_SUGGESTIONS = [
+  "Sí, incluir",
+  "No, excluir",
+  "Aplica a todas las sociedades",
+  "Solo empleados activos",
+  "Usar estándar SAP",
+  "Conforme con la propuesta",
+];
+
 function AnswerBox({ id, onAnswer }: { id: number; onAnswer: Props["onAnswer"] }) {
   const [text, setText] = useState("");
   return (
-    <form
-      className="answer"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (text.trim()) void onAnswer(id, text).then(() => setText(""));
-      }}
-    >
-      <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Escribe la respuesta para la fábrica…" />
-      <button type="submit">Responder</button>
-    </form>
+    <div style={{ marginTop: "8px" }}>
+      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "6px" }}>
+        {QUICK_SUGGESTIONS.map((s) => (
+          <button
+            key={s}
+            type="button"
+            className="ghost"
+            style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "12px", background: "var(--bg-card, #f0f4f8)" }}
+            onClick={() => setText((prev) => (prev ? `${prev} · ${s}` : s))}
+          >
+            + {s}
+          </button>
+        ))}
+      </div>
+      <form
+        className="answer"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (text.trim()) void onAnswer(id, text).then(() => setText(""));
+        }}
+      >
+        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Escribe la respuesta para la fábrica…" />
+        <button type="submit">Responder</button>
+      </form>
+    </div>
   );
 }
