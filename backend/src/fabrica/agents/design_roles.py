@@ -19,7 +19,19 @@ ARQUITECTO = AgentRole(
                 "items": schema_object(
                     {
                         "name": STRING,
-                        "type": {"type": "string", "enum": ["PROG", "CLAS", "INTF"]},
+                        "type": {
+                            "type": "string",
+                            "enum": [
+                                "PROG",
+                                "CLAS",
+                                "INTF",
+                                "DDLS",
+                                "BDEF",
+                                "SRVD",
+                                "SRVB",
+                                "DCLS",
+                            ],
+                        },
                         "package": STRING,
                     }
                 ),
