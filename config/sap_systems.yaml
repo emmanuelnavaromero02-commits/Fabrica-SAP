@@ -1,3 +1,21 @@
-default: null
-systems: {}
-projects: {}
+default: "TAILOY-DEV"
+systems:
+  TAILOY-DEV:
+    kind: "mock"
+    url: "https://sap-dev.tailoy.com.pe"
+    client: "100"
+    user_env: "SAP_USER"
+    password_env: "SAP_PASSWORD"
+    atc_variant: "Z_DEFAULT"
+    language: "ES"
+  MOCK-DEV:
+    kind: "mock"
+    url: "https://sap-mock.local"
+    client: "100"
+    user_env: "SAP_USER"
+    password_env: "SAP_PASSWORD"
+    atc_variant: "DEFAULT"
+    language: "ES"
+projects:
+  SD-FE: "TAILOY-DEV"
+  demo: "MOCK-DEV"
