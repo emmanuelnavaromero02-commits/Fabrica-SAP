@@ -44,11 +44,7 @@ def _resolve_system(system_id: str) -> dict[str, Any]:
         import boto3
 
         prefix = os.environ.get("SSM_ABAP_PREFIX", "/fabrica-sw/abap")
-        region = (
-            os.environ.get("AWS_REGION")
-            or os.environ.get("AWS_DEFAULT_REGION")
-            or "us-east-1"
-        )
+        region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
         client = boto3.client("ssm", region_name=region)
         param = client.get_parameter(Name=f"{prefix}/{sid}", WithDecryption=True)
         raw = param["Parameter"]["Value"].strip()
@@ -76,9 +72,7 @@ async def _call(system_id: str, path: str, body: dict[str, Any]) -> dict[str, An
     verify = os.environ.get("SSL_VERIFY", "false").lower() == "true"
     timeout = float(os.environ.get("SAPCFG_TIMEOUT", "180"))
     async with httpx.AsyncClient(verify=verify, timeout=timeout) as h:
-        r = await h.post(
-            url, json=body, auth=auth, headers={"Accept": "application/json"}
-        )
+        r = await h.post(url, json=body, auth=auth, headers={"Accept": "application/json"})
         if r.status_code >= 400:
             return {"ok": False, "error": f"HTTP {r.status_code}", "raw": r.text[:800]}
         try:
@@ -95,8 +89,7 @@ async def sapcfg_ping(sap_system_id: str = "") -> dict[str, Any]:
 
 @server.tool(
     description=(
-        "Campos DDIC de una tabla/estructura de customizing "
-        "(insumo para mapear spec -> campos)."
+        "Campos DDIC de una tabla/estructura de customizing (insumo para mapear spec -> campos)."
     )
 )
 async def sapcfg_ddic(tablename: str, sap_system_id: str = "") -> dict[str, Any]:
@@ -107,10 +100,8 @@ async def sapcfg_ddic(tablename: str, sap_system_id: str = "") -> dict[str, Any]
     description="Lee entradas actuales de una tabla de customizing (para el diff del preview)."
 )
 async def sapcfg_read_table(
-    tablename: str,
-    where: str = "",
-    max_rows: int = 200,
-    sap_system_id: str = "") -> dict[str, Any]:
+    tablename: str, where: str = "", max_rows: int = 200, sap_system_id: str = ""
+) -> dict[str, Any]:
     return await _call(
         sap_system_id,
         "/read_table",
@@ -121,17 +112,11 @@ async def sapcfg_read_table(
 @server.tool(
     description="Lee un BC-Set existente (sus valores) — diff/idempotencia y aprender formato."
 )
-async def sapcfg_bcset_read(
-    bcset_id: str, sap_system_id: str = ""
-) -> dict[str, Any]:
-    return await _call(
-        sap_system_id, "/bcset_read", {"bcset_id": bcset_id.upper()}
-    )
+async def sapcfg_bcset_read(bcset_id: str, sap_system_id: str = "") -> dict[str, Any]:
+    return await _call(sap_system_id, "/bcset_read", {"bcset_id": bcset_id.upper()})
 
 
-@server.tool(
-    description="GATE: construye el BC-Set value-based y ACTIVA EN SIMULACIÓN (dry-run)."
-)
+@server.tool(description="GATE: construye el BC-Set value-based y ACTIVA EN SIMULACIÓN (dry-run).")
 async def sapcfg_preview(
     bcset_id: str,
     text: str,
@@ -166,9 +151,7 @@ async def sapcfg_preview(
     return {"write": w, "simulate": sim}
 
 
-@server.tool(
-    description="Activa DE VERDAD un BC-Set ya construido (tras aprobar el preview)."
-)
+@server.tool(description="Activa DE VERDAD un BC-Set ya construido (tras aprobar el preview).")
 async def sapcfg_apply(
     bcset_id: str, transport: str = "", sap_system_id: str = ""
 ) -> dict[str, Any]:

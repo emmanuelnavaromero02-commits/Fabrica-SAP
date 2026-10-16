@@ -46,11 +46,7 @@ def _resolve_connection(connection_id: str) -> dict[str, Any]:
         import boto3
 
         prefix = os.environ.get("SSM_CPI_PREFIX", "/fabrica-sw/cpi")
-        region = (
-            os.environ.get("AWS_REGION")
-            or os.environ.get("AWS_DEFAULT_REGION")
-            or "us-east-1"
-        )
+        region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
         client = boto3.client("ssm", region_name=region)
         param = client.get_parameter(Name=f"{prefix}/{cid}", WithDecryption=True)
         data = json.loads(param["Parameter"]["Value"].strip())
@@ -205,8 +201,7 @@ async def cpi_status(connection_id: str = "") -> dict[str, Any]:
 
 @server.tool(
     description=(
-        "Lista paquetes de integración o artefactos (iFlows) de un "
-        "inquilino de Cloud Integration."
+        "Lista paquetes de integración o artefactos (iFlows) de un inquilino de Cloud Integration."
     )
 )
 async def cpi_list_flows(

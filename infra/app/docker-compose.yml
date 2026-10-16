@@ -1,0 +1,395 @@
+# Capa de aplicación AWS — stack completo en UN EC2 detrás de Caddy (TLS LE).
+# Consolida los 3 stacks locales (local/ + idp/ + orquestador/) en una sola
+# compose con una sola red. Diferencias vs local:
+#   - Caddy publica 80/443 y hace TLS automático por subdominio.
+#   - Adjuntos en S3 NATIVO (no MinIO): el browser sube presigned a AWS S3.
+#   - Datos en bind-mounts a /data (volumen EBS dedicado, respaldado).
+#   - OIDC interno: los servicios resuelven kc.${BASE_DOMAIN} (y demás) por el
+#     alias de red de Caddy → TLS válido, sin depender del hairpin del EIP.
+#
+# Todos los VALORES vienen de .env (no versionado). Aquí no hay secretos.
+# Subir el repo a la instancia y: docker compose up -d --build  (ver README).
+
+name: fabrica-aws
+
+services:
+  # ======================= Gitea =======================
+  gitea-db:
+    image: postgres:${POSTGRES_VERSION:-17}
+    restart: unless-stopped
+    stop_grace_period: "5s"
+    environment:
+      POSTGRES_USER: gitea
+      POSTGRES_PASSWORD: "${GITEA_DB_PASSWORD}"
+      POSTGRES_DB: gitea
+    volumes:
+      - "/data/gitea_pgdata:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gitea -d gitea"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  gitea:
+    image: gitea/gitea:${GITEA_TAG:-1.26}
+    restart: unless-stopped
+    environment:
+      GITEA__server__DOMAIN: "git.${BASE_DOMAIN}"
+      GITEA__server__SSH_DOMAIN: "git.${BASE_DOMAIN}"
+      GITEA__server__HTTP_PORT: "3000"
+      GITEA__server__ROOT_URL: "https://git.${BASE_DOMAIN}/"
+      # URLs de clonado SSH anuncian el puerto host 2222 (contenedor 22).
+      GITEA__server__SSH_PORT: "2222"
+      GITEA__server__SSH_LISTEN_PORT: "22"
+      GITEA__security__INSTALL_LOCK: "true"
+      GITEA__service__DISABLE_REGISTRATION: "true"
+      # SSO: el registro manual sigue cerrado, pero el primer login por
+      # Keycloak crea/enlaza la cuenta automáticamente.
+      GITEA__oauth2_client__ENABLE_AUTO_REGISTRATION: "true"
+      GITEA__oauth2_client__USERNAME: "preferred_username"
+      GITEA__oauth2_client__ACCOUNT_LINKING: "auto"
+      GITEA__database__DB_TYPE: "postgres"
+      GITEA__database__HOST: "gitea-db:5432"
+      GITEA__database__NAME: "gitea"
+      GITEA__database__USER: "gitea"
+      GITEA__database__PASSWD: "${GITEA_DB_PASSWORD}"
+    volumes:
+      - "/data/gitea_data:/data"
+    expose: ["3000"]
+    # SSH de Git directo al host (no pasa por Caddy: es TCP, no HTTP).
+    ports:
+      - "2222:22"
+    depends_on:
+      gitea-db:
+        condition: service_healthy
+
+  # ======================= Keycloak (IdP) =======================
+  keycloak-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: "${KC_DB_PASSWORD}"
+    volumes:
+      - "/data/kc_pgdata:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    restart: unless-stopped
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_ADMIN: "${KC_ADMIN_USER}"
+      KEYCLOAK_ADMIN_PASSWORD: "${KC_ADMIN_PASSWORD}"
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: "${KC_DB_PASSWORD}"
+      # Producción detrás de proxy TLS (Caddy). El hostname público fija el iss.
+      KC_HOSTNAME: "https://kc.${BASE_DOMAIN}"
+      KC_HOSTNAME_STRICT: "true"
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: "xforwarded"
+      KC_HEALTH_ENABLED: "true"
+      # Feature 'scripts' (preview): habilita los script mappers DESPLEGADOS como
+      # JAR (idp/kc-script-mapper/ -> idp/kc-providers/op-admin-mapper.jar). El
+      # mapper op_admin emite el claim booleano (rol admin del realm -> admin en
+      # OpenProject). El inline está deshabilitado en Quarkus. Ver [[gestion-usuarios-sso]].
+      KC_FEATURES: "scripts"
+    command: ["start", "--import-realm", "--features=scripts"]
+    expose: ["8080"]
+    volumes:
+      - "../../idp/realm-fabrica.json:/opt/keycloak/data/import/realm-fabrica.json:ro"
+      # Script mapper provider (op_admin). El JAR se arma desde
+      # idp/kc-script-mapper/ con idp/build-kc-providers.sh. Ver
+      # [[gestion-usuarios-sso]].
+      - "../../idp/kc-providers:/opt/keycloak/providers:ro"
+
+  # ======================= Temporal =======================
+  temporal-db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: "${TEMPORAL_DB_PASSWORD}"
+    volumes:
+      - "/data/temporal_pgdata:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  temporal:
+    image: temporalio/auto-setup:1.29.6.1
+    restart: unless-stopped
+    depends_on:
+      temporal-db:
+        condition: service_healthy
+    environment:
+      DB: postgres12
+      DB_PORT: "5432"
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: "${TEMPORAL_DB_PASSWORD}"
+      POSTGRES_SEEDS: temporal-db
+    expose: ["7233"]
+
+  temporal-ui:
+    image: temporalio/ui:2.50.0
+    restart: unless-stopped
+    depends_on:
+      - temporal
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: "https://temporal.${BASE_DOMAIN}"
+    expose: ["8080"]
+
+  # OIDC delante de Temporal Web. Publicado por Caddy en temporal.${BASE_DOMAIN}.
+  temporal-auth-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.7.1
+    restart: unless-stopped
+    depends_on:
+      - temporal-ui
+    environment:
+      OAUTH2_PROXY_PROVIDER: "keycloak-oidc"
+      OAUTH2_PROXY_CLIENT_ID: "temporal-web"
+      OAUTH2_PROXY_CLIENT_SECRET: "${TEMPORAL_OIDC_CLIENT_SECRET}"
+      OAUTH2_PROXY_OIDC_ISSUER_URL: "https://kc.${BASE_DOMAIN}/realms/fabrica"
+      OAUTH2_PROXY_REDIRECT_URL: "https://temporal.${BASE_DOMAIN}/oauth2/callback"
+      OAUTH2_PROXY_UPSTREAMS: "http://temporal-ui:8080"
+      OAUTH2_PROXY_HTTP_ADDRESS: "0.0.0.0:4180"
+      OAUTH2_PROXY_COOKIE_SECRET: "${TEMPORAL_COOKIE_SECRET}"
+      OAUTH2_PROXY_COOKIE_SECURE: "true"
+      OAUTH2_PROXY_COOKIE_DOMAINS: "temporal.${BASE_DOMAIN}"
+      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
+      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
+      OAUTH2_PROXY_PASS_AUTHORIZATION_HEADER: "true"
+      OAUTH2_PROXY_PASS_USER_HEADERS: "true"
+      OAUTH2_PROXY_SCOPE: "openid profile email"
+    expose: ["4180"]
+
+  # ======================= Orquestador (Fabro) =======================
+  fabro-worker:
+    build: ../../orquestador/app
+    restart: unless-stopped
+    depends_on:
+      - temporal
+    env_file: [.env]
+    # Valores derivados del dominio/región (env_file NO interpola ${...}).
+    environment:
+      TEMPORAL_ADDRESS: "temporal:7233"
+      TEMPORAL_WEB_URL: "https://temporal.${BASE_DOMAIN}"
+      GITEA_BASE_URL: "https://git.${BASE_DOMAIN}"
+      # URL del MCP `fabrica` que provisionar_repo siembra en el .mcp.json del
+      # repo del requerimiento (para Claude Code/Codex del dev).
+      FABRICA_MCP_URL: "https://mcp.${BASE_DOMAIN}/mcp"
+      # URL del MCP ABAP (SAP ADT): se siembra en el .mcp.json de repos ABAP con
+      # sistema SAP del cliente registrado (server `abap`, header x-sap-system-id).
+      ABAP_MCP_URL: "https://mcp.${BASE_DOMAIN}/abap/mcp"
+      S3_ENDPOINT_PUBLIC: "https://s3.${AWS_REGION}.amazonaws.com"
+      S3_ENDPOINT_INTERNAL: "https://s3.${AWS_REGION}.amazonaws.com"
+      S3_REGION: "${AWS_REGION}"
+      S3_BUCKET: "${ATTACHMENTS_BUCKET}"
+      # DB de proyecto (no-op hasta cablear la proyección en el workflow — 2b).
+      PROYECTO_DB_DSN: "postgresql://fabrica:${PROYECTO_DB_PASSWORD}@proyecto-db:5432/fabrica"
+    command: ["python", "-u", "worker.py"]
+
+  fabro-webhook:
+    build: ../../orquestador/app
+    restart: unless-stopped
+    depends_on:
+      - temporal
+    env_file: [.env]
+    environment:
+      TEMPORAL_ADDRESS: "temporal:7233"
+      TEMPORAL_WEB_URL: "https://temporal.${BASE_DOMAIN}"
+      GITEA_BASE_URL: "https://git.${BASE_DOMAIN}"
+      S3_ENDPOINT_PUBLIC: "https://s3.${AWS_REGION}.amazonaws.com"
+      S3_ENDPOINT_INTERNAL: "https://s3.${AWS_REGION}.amazonaws.com"
+      S3_REGION: "${AWS_REGION}"
+      S3_BUCKET: "${ATTACHMENTS_BUCKET}"
+      OIDC_ISSUER: "https://kc.${BASE_DOMAIN}/realms/fabrica"
+      OIDC_PUBLIC_ISSUER: "https://kc.${BASE_DOMAIN}/realms/fabrica"
+      OIDC_CLIENT_ID: "inbox"
+      OIDC_CLIENT_SECRET: "${INBOX_OIDC_CLIENT_SECRET}"
+      INBOX_BASE_URL: "https://inbox.${BASE_DOMAIN}"
+      # DB de proyecto: el inbox lee/escribe el blog de comentarios + prioridad
+      # (colaboración que sustituye a OpenProject).
+      PROYECTO_DB_DSN: "postgresql://fabrica:${PROYECTO_DB_PASSWORD}@proyecto-db:5432/fabrica"
+    command: ["uvicorn", "webhook:app", "--host", "0.0.0.0", "--port", "8000"]
+    expose: ["8000"]
+
+  # DB de PROYECTO (read-model CQRS-lite que reemplaza el rol relacional de
+  # OpenProject). Ver db/schema.sql, db/funciones.sql.
+  proyecto-db:
+    image: postgres:${POSTGRES_VERSION:-17}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fabrica
+      POSTGRES_PASSWORD: "${PROYECTO_DB_PASSWORD}"
+      POSTGRES_DB: fabrica
+    volumes:
+      - "/data/proyecto_pgdata:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fabrica"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  panel:
+    build: ../../panel/app
+    restart: unless-stopped
+    env_file: [.env]
+    depends_on:
+      proyecto-db:
+        condition: service_healthy
+    environment:
+      GITEA_BASE_URL: "https://git.${BASE_DOMAIN}"
+      PANEL_BASE_URL: "https://app.${BASE_DOMAIN}"
+      INBOX_BASE_URL: "https://inbox.${BASE_DOMAIN}"
+      OIDC_ISSUER: "https://kc.${BASE_DOMAIN}/realms/fabrica"
+      OIDC_PUBLIC_ISSUER: "https://kc.${BASE_DOMAIN}/realms/fabrica"
+      OIDC_CLIENT_ID: "panel"
+      OIDC_CLIENT_SECRET: "${PANEL_OIDC_CLIENT_SECRET}"
+      PROYECTO_DB_DSN: "postgresql://fabrica:${PROYECTO_DB_PASSWORD}@proyecto-db:5432/fabrica"
+      # Credenciales de los sistemas SAP (MCP ABAP) → SSM Parameter Store. El
+      # panel escribe SecureStrings en /fabrica-sw/abap/* vía el rol de instancia
+      # (boto3 toma las credenciales del IMDSv2; requiere ssm:PutParameter/Delete).
+      AWS_REGION: "${AWS_REGION}"
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
+    expose: ["8001"]
+
+  # MCP `fabrica`: puente entre Claude Code/Codex LOCAL (laptop del dev) y la
+  # fabrica. Hosted en modo http detras de Caddy (mcp.<dominio>), protegido por
+  # token bearer (FABRICA_MCP_TOKEN). El contexto del requerimiento (org/repo/wp)
+  # lo pasan las tools por argumento. Reusa GITEA_API_TOKEN del .env (necesita
+  # write:organization + rw de los repos de cliente). Las URLs internas resuelven
+  # por los network aliases de Caddy (sin hairpin del EIP).
+  fabrica-mcp:
+    build: ../../mcp/fabrica
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      GITEA_BASE_URL: "https://git.${BASE_DOMAIN}"
+      GITEA_PUBLIC_URL: "https://git.${BASE_DOMAIN}"
+      FACTORY_WEBHOOK_URL: "https://inbox.${BASE_DOMAIN}"
+      FABRICA_MCP_TRANSPORT: "http"
+      FABRICA_MCP_HOST: "0.0.0.0"
+      FABRICA_MCP_PORT: "8080"
+      FABRICA_MCP_PATH: "/mcp"
+      FABRICA_MCP_TOKEN: "${FABRICA_MCP_TOKEN}"
+      # Read-model de proyecto: el MCP lo consulta (solo lectura) para el
+      # asistente generativo (estado de requerimientos, pelota, atrasos, etc.).
+      PROYECTO_DB_DSN: "postgresql://fabrica:${PROYECTO_DB_PASSWORD}@proyecto-db:5432/fabrica"
+      # Tools de VPN: el MCP corre vpnctl en el host por SSM (rol de instancia
+      # por IMDS). Necesita la región para boto3.
+      AWS_REGION: "${AWS_REGION}"
+    expose: ["8080"]
+
+  # ===================== MCP ABAP (SAP ADT) — AWS sample ======================
+  # MCP que conecta a SAP por ADT y expone herramientas ABAP (crear objeto,
+  # syntax check, ATC, unit test, transportes). Se sirve por Caddy en
+  # mcp.${BASE_DOMAIN}/abap/mcp. Imagen construida desde el repo de AWS
+  # (git context, Dockerfile.simple). FASE 2: multi-sistema por cliente. Nuestro
+  # entrypoint.py lee sap-systems.yaml y siembra el keychain en memoria con una
+  # entrada por system_id (password desde SSM Parameter Store /fabrica-sw/abap/* /
+  # docker secret / env), porque el provider `aws_secrets` del sample es solo un
+  # stub. Claude Code elige el sistema con el header x-sap-system-id (requiere
+  # ENABLE_ENTERPRISE_MODE). El rol de la instancia ya lee /fabrica-sw/* (sin IAM nuevo).
+  abap-mcp:
+    build: ./abap-mcp          # Dockerfile propio: clona el sample + entrypoint propio
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      SERVER_HOST: "0.0.0.0"
+      SERVER_PORT: "8000"
+      ENABLE_ENTERPRISE_MODE: "true"      # multi-tenant: contexto por headers de request
+      CREDENTIAL_PROVIDER: "keychain"     # el entrypoint siembra el store en memoria
+      ENABLE_PRINCIPAL_PROPAGATION: "false"
+      AWS_REGION: "${AWS_REGION}"
+      # Conectamos al SAP por IP por el túnel; su cert no matchea la IP →
+      # desactivar verificación TLS (cert self-signed/interno del cliente).
+      SSL_VERIFY: "false"
+      LOG_LEVEL: "INFO"
+      # Acceso de LECTURA a Gitea para restaurar_repo (lee el código serializado de
+      # un repo y lo recrea en SAP). El token viene del .env (env_file), igual que fabrica-mcp.
+      GITEA_BASE_URL: "https://git.${BASE_DOMAIN}"
+    volumes:
+      - "./abap-mcp/sap-systems.yaml:/app/config/sap-systems.yaml:ro"
+    expose: ["8000"]
+
+  # ===== MCP `sapcfg` (configuración de SAP por código, BC-Sets) =====
+  # Server MCP propio (FastMCP/Streamable HTTP). Delega en el handler ABAP
+  # ZCL_7BS_SAPCFG_API (SICF /sap/bc/z7bs/sapcfg). Reusa las creds por sistema
+  # de SSM (/fabrica-sw/abap/<id>), igual que abap-mcp. Caddy publica /sapcfg/*.
+  sapcfg-mcp:
+    build: ./sapcfg-mcp
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      SERVER_HOST: "0.0.0.0"
+      SERVER_PORT: "8000"
+      AWS_REGION: "${AWS_REGION}"
+      SSL_VERIFY: "false"
+      DEFAULT_SAP_SYSTEM_ID: "TAILOY-DEV"
+      SSM_ABAP_PREFIX: "/fabrica-sw/abap"
+      SAPCFG_SICF_BASE: "/sap/bc/z7bs/sapcfg"
+      LOG_LEVEL: "INFO"
+    expose: ["8000"]
+
+  # ===== MCP `cpimig` (migración SAP CPI: Neo -> Cloud Foundry) =====
+  # Server MCP propio (FastMCP/Streamable HTTP). Habla la API OData pública de CPI
+  # (/api/v1/) de los tenants origen y destino. Las conexiones (pares origen/destino
+  # + credenciales OAuth) se resuelven desde SSM (/fabrica-sw/cpi/<connection_id>),
+  # mismo patrón que el abap-mcp con /fabrica-sw/abap. Caddy publica /cpimig/*.
+  # F0 = solo lectura (cpi_status, cpi_list_flows). Ver docs/diseno-cpimig-mcp.md.
+  cpimig-mcp:
+    build: ./cpimig-mcp
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      SERVER_HOST: "0.0.0.0"
+      SERVER_PORT: "8000"
+      AWS_REGION: "${AWS_REGION}"
+      # Tenants CPI públicos (cert válido); dejar verificación TLS activa.
+      SSL_VERIFY: "true"
+      SSM_CPI_PREFIX: "/fabrica-sw/cpi"
+      DEFAULT_CONNECTION_ID: ""
+      LOG_LEVEL: "INFO"
+    expose: ["8000"]
+
+  # ======================= Caddy (reverse proxy + TLS) =======================
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      BASE_DOMAIN: "${BASE_DOMAIN}"
+      ACME_EMAIL: "${ACME_EMAIL}"
+    volumes:
+      - "./Caddyfile:/etc/caddy/Caddyfile:ro"
+      - "/data/caddy_data:/data"
+      - "/data/caddy_config:/config"
+    networks:
+      default:
+        # Los servicios backend resuelven estos nombres → Caddy (TLS válido),
+        # evitando el hairpin del EIP para las llamadas OIDC server-to-server.
+        aliases:
+          - "kc.${BASE_DOMAIN}"
+          - "op.${BASE_DOMAIN}"
+          - "git.${BASE_DOMAIN}"
+          - "app.${BASE_DOMAIN}"
+          - "inbox.${BASE_DOMAIN}"
+          - "temporal.${BASE_DOMAIN}"
+
+networks:
+  default:

@@ -1,0 +1,89 @@
+# Reverse proxy + TLS automático (Let's Encrypt) por subdominio.
+# {$BASE_DOMAIN} y {$ACME_EMAIL} se sustituyen desde el entorno del contenedor
+# (ver docker-compose.yml). Requiere que cada subdominio resuelva por DNS a la
+# EIP ANTES de levantar Caddy (ACME http-01 lo necesita).
+
+{
+	email {$ACME_EMAIL}
+}
+
+# OpenProject (plano de control).
+op.{$BASE_DOMAIN} {
+	reverse_proxy web:8080
+}
+
+# Gitea (control de versiones). El SSH de Git NO pasa por aquí (es TCP:2222).
+git.{$BASE_DOMAIN} {
+	reverse_proxy gitea:3000
+}
+
+# Keycloak (IdP / SSO).
+kc.{$BASE_DOMAIN} {
+	reverse_proxy keycloak:8080
+}
+
+# Panel de Control (PMs + admin).
+app.{$BASE_DOMAIN} {
+	reverse_proxy panel:8001
+}
+
+# Inbox / endpoint de webhooks del orquestador.
+# La raíz redirige a la UI del Inbox (/inbox); el resto de rutas
+# (/webhooks/openproject, /factory, /api, /auth) pasan tal cual.
+inbox.{$BASE_DOMAIN} {
+	@root path /
+	redir @root /inbox
+	reverse_proxy fabro-webhook:8000
+}
+
+# Temporal Web, detrás de oauth2-proxy (OIDC Keycloak).
+temporal.{$BASE_DOMAIN} {
+	reverse_proxy temporal-auth-proxy:4180
+}
+
+# MCP `fabrica`: lo consume Claude Code/Codex en la laptop del desarrollador.
+# La autenticación es por token bearer en el propio servidor MCP (no aquí).
+# Bajo /abap/* se sirve el MCP ABAP (SAP ADT); el prefijo /abap se quita antes
+# de pasar al contenedor (que escucha en /mcp). Cliente: mcp.<dominio>/abap/mcp.
+# El sample NO trae autenticación propia y controla el SAP del cliente con creds
+# server-side, así que la puerta la pone Caddy. AUTH UNIFICADA: en vez de un
+# basic_auth con secreto COMPARTIDO, cada request se valida con `forward_auth`
+# contra el mismo validador de tokens PERSONALES que usa el MCP `fabrica`
+# (fabro-webhook:/factory/mcp-validate → lee `mcp_token`). Así un solo token
+# personal (Bearer ${FABRICA_MCP_TOKEN}) gatea TODOS los MCP y revocar el token
+# en `mcp_token` corta abap+sapcfg+cpimig+fabrica de golpe (baja de consultor =
+# un solo paso). Caddy hace un GET al validador reenviando el Authorization; si
+# responde 2xx pasa, si 401 (token revocado) corta.
+mcp.{$BASE_DOMAIN} {
+	handle_path /abap/* {
+		route {
+			forward_auth fabro-webhook:8000 {
+				uri /factory/mcp-validate
+			}
+			reverse_proxy abap-mcp:8000
+		}
+	}
+	# MCP `sapcfg` (configuración de SAP por código, BC-Sets). Mismo esquema que
+	# /abap: se quita el prefijo /sapcfg (el contenedor escucha en /mcp) + forward_auth.
+	handle_path /sapcfg/* {
+		route {
+			forward_auth fabro-webhook:8000 {
+				uri /factory/mcp-validate
+			}
+			reverse_proxy sapcfg-mcp:8000
+		}
+	}
+	# MCP `cpimig` (migración SAP CPI: Neo -> Cloud Foundry). Mismo esquema:
+	# se quita el prefijo /cpimig (el contenedor escucha en /mcp) + forward_auth.
+	handle_path /cpimig/* {
+		route {
+			forward_auth fabro-webhook:8000 {
+				uri /factory/mcp-validate
+			}
+			reverse_proxy cpimig-mcp:8000
+		}
+	}
+	handle {
+		reverse_proxy fabrica-mcp:8080
+	}
+}

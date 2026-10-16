@@ -1,0 +1,8 @@
+# Dependencias del servidor MCP `fabrica`.
+fastmcp==3.3.1
+httpx>=0.28,<1
+PyYAML>=6,<7
+# Lectura del read-model de proyecto (asistente generativo de estado).
+asyncpg>=0.30,<1
+# Tools de VPN: corren vpnctl en el host por SSM (rol de instancia vía IMDS).
+boto3>=1.34,<2

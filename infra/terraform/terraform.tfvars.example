@@ -1,0 +1,25 @@
+# Copia a terraform.tfvars y completa. terraform.tfvars NO se versiona
+# (lleva valores reales de la cuenta). Los SECRETOS (Anthropic key, passwords)
+# NO van aquí — van en SSM Parameter Store / .env en la instancia.
+
+aws_region = "us-east-1"          # o "sa-east-1" (São Paulo, ~+35%)
+base_domain = "peru.epiuse.darkswf.7businesssolutions.com"
+
+# Acceso web: abierto a internet (con auth Keycloak + TLS) o restringido.
+allowed_web_cidrs = ["0.0.0.0/0"]   # restringe a ["TU.IP/32"] o CIDR de tu VPN si prefieres
+allowed_git_ssh_cidrs = []          # ej. ["TU.IP/32"] para clonar por SSH:2222
+
+# Si la zona DNS está en Route53 de ESTA cuenta, pon el zone_id (Terraform crea
+# los A records). Si no, déjalo vacío y créalos a mano apuntando a la EIP.
+# route53_zone_id = "Z0123456789ABCDEFG"
+
+# Cómputo (arranque apagable). Subir a t3.2xlarge si hace falta.
+# instance_type    = "t3.xlarge"
+# data_ebs_size_gb = 50
+
+tags = {
+  Project    = "fabrica-sw"
+  CostCenter = "CAMBIAR"
+  Env        = "prod"
+  ManagedBy  = "terraform"
+}

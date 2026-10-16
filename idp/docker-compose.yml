@@ -1,0 +1,78 @@
+# Keycloak (IdP) + Postgres dedicado.
+# Se conecta a la red de OpenProject/Gitea para que los demás servicios
+# puedan resolver el hostname `keycloak` internamente.
+#
+# Levantar:
+#   docker compose -f c:/temp/7bs/ws/SwF/idp/docker-compose.yml up -d
+#
+# Admin UI: http://localhost:8090 (admin / Admin-Local-2026!)
+# Realm seed: realm-fabrica.json (import automático al primer arranque)
+
+services:
+
+  keycloak-db:
+    image: postgres:16-alpine
+    container_name: keycloak-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: kc-db-local
+    volumes:
+      - kc_db:/var/lib/postgresql/data
+    networks:
+      - kc
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    container_name: keycloak
+    restart: unless-stopped
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: Admin-Local-2026!
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: kc-db-local
+      # Hostname único accesible tanto desde el browser (via hosts file)
+      # como desde los containers (via extra_hosts: kc.fabrica.local→host-gateway).
+      # Esto permite SSO real: una sola sesión de KC vale para todos los clientes.
+      KC_HOSTNAME: kc.fabrica.local
+      KC_HOSTNAME_PORT: 8090
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY: edge
+      # Habilita import de realms al arrancar (json en /opt/keycloak/data/import).
+      KC_HEALTH_ENABLED: "true"
+    command:
+      - start-dev
+      - --import-realm
+    ports:
+      - "8090:8080"
+    volumes:
+      - ./realm-fabrica.json:/opt/keycloak/data/import/realm-fabrica.json:ro
+    networks:
+      - kc
+      - shared
+
+networks:
+  kc:
+    driver: bridge
+  # Red compartida con el resto del stack (OpenProject, Gitea, orquestador)
+  # para que los servicios puedan resolver `keycloak:8080` internamente.
+  shared:
+    external: true
+    name: reqplatform-local_default
+
+volumes:
+  kc_db:

@@ -1,0 +1,177 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Arquitectura Fabrica" id="arch-fabrica-1">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" arrows="1" connect="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1080" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="Fábrica de software — arquitectura (host AWS + MCPs + VPN a SAP de clientes)" parent="1" vertex="1"
+                style="text;html=1;fontSize=20;fontStyle=1;fontFamily=Helvetica;align=left;verticalAlign=middle;fontColor=#232F3E;">
+          <mxGeometry x="40" y="24" width="1000" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Actors -->
+        <mxCell id="laptop" value="Claude Code / Codex&#10;(laptop del dev)" parent="1" vertex="1"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#232F3E;fontStyle=1;">
+          <mxGeometry x="40" y="240" width="150" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="users" value="Consultores / PM&#10;(navegador)" parent="1" vertex="1"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#232F3E;fontStyle=1;">
+          <mxGeometry x="40" y="600" width="150" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- AWS Cloud frame -->
+        <mxCell id="cloud" value="AWS Cloud · us-east-1 · EIP 98.87.73.201" parent="1" vertex="1"
+                style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud_alt;strokeColor=#232F3E;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#232F3E;dashed=0;">
+          <mxGeometry x="240" y="90" width="1080" height="930" as="geometry" />
+        </mxCell>
+
+        <!-- SSM / Parameter Store -->
+        <mxCell id="ssm" value="AWS SSM&#10;RunCommand (vpnctl) +&#10;Parameter Store&#10;/fabrica-sw/{vpn,abap,cpi}" parent="1" vertex="1"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EBF0;strokeColor=#232F3E;fontColor=#232F3E;fontStyle=1;verticalAlign=top;spacingTop=6;">
+          <mxGeometry x="1070" y="150" width="220" height="130" as="geometry" />
+        </mxCell>
+
+        <!-- EC2 host frame -->
+        <mxCell id="ec2" value="EC2 · fabrica-sw-host  (Docker Compose: fabrica-aws)" parent="1" vertex="1"
+                style="rounded=1;html=1;container=1;collapsible=0;verticalAlign=top;align=left;spacingLeft=12;spacingTop=6;fontSize=12;fontStyle=1;fontColor=#232F3E;fillColor=#F7F9FB;strokeColor=#232F3E;dashed=0;">
+          <mxGeometry x="270" y="150" width="760" height="850" as="geometry" />
+        </mxCell>
+
+        <!-- Caddy front door -->
+        <mxCell id="caddy" value="Caddy — TLS + basic_auth (front door: mcp.&lt;dominio&gt;, panel, gitea, temporal-ui)" parent="1" vertex="1"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontStyle=1;">
+          <mxGeometry x="300" y="210" width="700" height="52" as="geometry" />
+        </mxCell>
+
+        <!-- MCP layer -->
+        <mxCell id="mcpbox" value="MCP (HTTP, detrás de Caddy)" parent="1" vertex="1"
+                style="rounded=1;html=1;container=1;collapsible=0;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;fontSize=11;fontStyle=1;fontColor=#ED7100;fillColor=#FFF7F0;strokeColor=#ED7100;dashed=0;">
+          <mxGeometry x="300" y="300" width="360" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="abapmcp" value="abap-mcp&#10;(ADT → SAP)" parent="1" vertex="1"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;">
+          <mxGeometry x="320" y="340" width="150" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="fabricamcp" value="fabrica-mcp&#10;(orquesta la fábrica)" parent="1" vertex="1"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;">
+          <mxGeometry x="320" y="410" width="150" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="cpimig" value="cpimig-mcp&#10;(diseñado, sin desplegar)" parent="1" vertex="1"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2E8;strokeColor=#D79B00;dashed=1;fontColor=#8A6D3B;">
+          <mxGeometry x="490" y="340" width="150" height="56" as="geometry" />
+        </mxCell>
+
+        <!-- openfortivpn -->
+        <mxCell id="vpn" value="openfortivpn (en el host)&#10;split-tunnel por cliente&#10;rutas → ppp0/ppp1" parent="1" vertex="1"
+                style="rounded=1;whiteSpace=wrap;html=1;container=1;collapsible=0;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;fontSize=11;fontStyle=1;fontColor=#B85450;fillColor=#FDECEC;strokeColor=#B85450;dashed=0;">
+          <mxGeometry x="690" y="300" width="310" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="vpnlock" value="FortiGate&#10;user/clave + OTP opcional" parent="1" vertex="1"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;">
+          <mxGeometry x="720" y="380" width="250" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Platform -->
+        <mxCell id="plat" value="Plataforma" parent="1" vertex="1"
+                style="rounded=1;html=1;container=1;collapsible=0;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;fontSize=11;fontStyle=1;fontColor=#555555;fillColor=#F5F5F5;strokeColor=#999999;dashed=0;">
+          <mxGeometry x="300" y="520" width="700" height="440" as="geometry" />
+        </mxCell>
+        <mxCell id="panel" value="panel&#10;(inbox / admin)" parent="1" vertex="1"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;">
+          <mxGeometry x="320" y="560" width="200" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="gitea" value="Gitea&#10;(repos por requerimiento)" parent="1" vertex="1"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#B0E3E6;strokeColor=#0E8088;">
+          <mxGeometry x="550" y="560" width="200" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="keycloak" value="Keycloak&#10;(SSO / OIDC)" parent="1" vertex="1"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;">
+          <mxGeometry x="780" y="560" width="200" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="temporal" value="Temporal&#10;(server + UI + auth-proxy)" parent="1" vertex="1"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;">
+          <mxGeometry x="320" y="650" width="200" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="orq" value="Orquestador&#10;(fabro webhook + worker)" parent="1" vertex="1"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;">
+          <mxGeometry x="550" y="650" width="200" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="pdb" value="proyecto-db&#10;(Postgres)" parent="1" vertex="1"
+                style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#D5E8D4;strokeColor=#82B366;verticalAlign=top;spacingTop=2;">
+          <mxGeometry x="800" y="648" width="160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="dbs" value="Datastores dedicados: gitea-db · keycloak-db · temporal-db  (Postgres, uno por servicio)" parent="1" vertex="1"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDEDED;strokeColor=#999999;fontColor=#555555;dashed=1;">
+          <mxGeometry x="320" y="760" width="640" height="44" as="geometry" />
+        </mxCell>
+
+        <!-- Client SAP frame -->
+        <mxCell id="sapframe" value="Clientes SAP (on-prem, por VPN)" parent="1" vertex="1"
+                style="rounded=1;html=1;container=1;collapsible=0;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;fontSize=12;fontStyle=1;fontColor=#232F3E;fillColor=#F2F3F3;strokeColor=#232F3E;dashed=0;">
+          <mxGeometry x="1360" y="300" width="210" height="470" as="geometry" />
+        </mxCell>
+        <mxCell id="tailoy" value="TAILOY-DEV&#10;DS4 · 10.50.23.186&#10;OTP" parent="1" vertex="1"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EBF0;strokeColor=#232F3E;">
+          <mxGeometry x="1380" y="350" width="170" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="beta" value="BETA-DEV&#10;DS4 · 10.20.46.6&#10;sin OTP" parent="1" vertex="1"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EBF0;strokeColor=#232F3E;">
+          <mxGeometry x="1380" y="440" width="170" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="omnia" value="OMNIA-DEV&#10;10.0.0.200&#10;sin OTP (reachability pend.)" parent="1" vertex="1"
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EBF0;strokeColor=#232F3E;dashed=1;">
+          <mxGeometry x="1380" y="530" width="170" height="66" as="geometry" />
+        </mxCell>
+
+        <!-- Edges -->
+        <mxCell id="l1" value="HTTPS + basic_auth" parent="1" source="laptop" target="caddy" edge="1"
+                style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#545B64;fontSize=11;fontColor=#232F3E;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l2" value="HTTPS (SSO)" parent="1" source="users" target="caddy" edge="1"
+                style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#545B64;fontSize=11;fontColor=#232F3E;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l3" value="/abap/mcp" parent="1" source="caddy" target="abapmcp" edge="1"
+                style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#545B64;fontSize=11;fontColor=#232F3E;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l4" value="/fabrica/mcp" parent="1" source="caddy" target="fabricamcp" edge="1"
+                style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#545B64;fontSize=11;fontColor=#232F3E;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l5" value="SendCommand → vpnctl.sh" parent="1" source="fabricamcp" target="ssm" edge="1"
+                style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;strokeColor=#232F3E;fontSize=11;fontColor=#232F3E;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l6" value="SQL" parent="1" source="fabricamcp" target="pdb" edge="1"
+                style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#82B366;fontSize=11;fontColor=#232F3E;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l7" value="API" parent="1" source="fabricamcp" target="gitea" edge="1"
+                style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#0E8088;fontSize=11;fontColor=#232F3E;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l8" value="ADT :44300 (por túnel del host)" parent="1" source="abapmcp" target="vpn" edge="1"
+                style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#B85450;fontSize=11;fontColor=#232F3E;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l9" value="túnel FortiGate (split)" parent="1" source="vpn" target="sapframe" edge="1"
+                style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#B85450;fontSize=11;fontColor=#232F3E;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l10" value="OIDC" parent="1" source="panel" target="keycloak" edge="1"
+                style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#B85450;fontSize=11;fontColor=#232F3E;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="l11" value="workflows" parent="1" source="orq" target="temporal" edge="1"
+                style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#9673A6;fontSize=11;fontColor=#232F3E;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

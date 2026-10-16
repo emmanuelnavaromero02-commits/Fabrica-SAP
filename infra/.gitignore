@@ -1,0 +1,9 @@
+# Secretos y estado — NUNCA se versionan.
+terraform/terraform.tfvars
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+app/.env
+*.tgz
+.tools/

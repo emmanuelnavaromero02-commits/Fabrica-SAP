@@ -1,0 +1,27 @@
+# Sistemas SAP por cliente para el MCP ABAP (montado en /app/config/sap-systems.yaml).
+# Lo poblará el Panel en la FASE 2 (uno por cliente). VACÍO en la FASE 1.
+#
+# Lo NO-secreto (host/client/description/username) vive aquí. El PASSWORD nunca
+# va en este archivo: nuestro entrypoint.py lo resuelve al arrancar y siembra el
+# keychain en memoria del sample con clave = <ID-DEL-SISTEMA>. El password se
+# busca en este orden:
+#   1. SSM Parameter Store  -> SecureString en `/fabrica-sw/abap/<ID>` (o el
+#      `ssm_param` del sistema). Almacén estándar del proyecto; el rol de la
+#      instancia YA lee /fabrica-sw/* (sin tocar IAM). El valor puede ser
+#      JSON {"username":..,"password":..} o string=password.
+#   2. Docker secret        -> /run/secrets/sap_<ID>
+#   3. Variable de entorno  -> SAP_PASSWORD_<ID>   (ID en mayúsculas, no-alfanum -> _)
+#
+# Formato:
+#   systems:
+#     <ID-DEL-SISTEMA>:
+#       host: host.cliente.com:44300        # puerto = 44300 + nº de instancia
+#       client: "100"                        # mandante SAP
+#       username: DEVELOPER                  # opcional si el SecureString JSON lo trae
+#       ssm_param: /fabrica-sw/abap/cliX-dev # opcional; default `/fabrica-sw/abap/<ID>`
+#       description: "S/4HANA Dev del cliente X"
+#       secure: true                         # HTTPS (default true)
+#
+# Claude Code elige el sistema con el header x-sap-system-id (lo hornea el
+# .mcp.json del repo del requerimiento, FASE 4) — debe coincidir con <ID-DEL-SISTEMA>.
+systems: {}

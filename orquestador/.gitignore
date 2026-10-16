@@ -1,0 +1,4 @@
+# Secretos reales: nunca se versionan.
+.env
+__pycache__/
+*.pyc

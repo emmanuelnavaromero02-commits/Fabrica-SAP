@@ -1,0 +1,251 @@
+# Plantilla de descomposición de WPs para un Requisito aprobado.
+#
+# El agente `estimacion` lee esta plantilla + spec.md + prototipo.html y
+# devuelve la lista de WPs hijos a crear. NO replica ciegamente — aplica
+# las reglas de consolidación y solo activa las secciones que aplican al
+# requisito concreto.
+#
+# Convenciones:
+#   - hours_base = horas estimadas para un caso TÍPICO
+#   - hours_range = [optimista, realista, pesimista]
+#   - applies_when = expresión semántica que el agente evalúa
+#     contra spec/prototipo para decidir si crear el WP
+#   - consolidation_rule = cómo unir varios items del mismo tipo en UN solo WP
+#
+# Tipos de WP referenciados (deben existir en OpenProject):
+#   - Test Plan
+#   - Development Iteration
+#   - Backend Task / API Task / UI Task
+#   - Technical QA
+#   - Functional Testing
+#   - UAT
+#   - Deployment
+
+version: 1
+
+# Tipo de tecnología → bloques de tareas que se aplican.
+# El agente decide qué TECH_STACK aplica el requisito (ABAP_RAP /
+# FIORI_ELEMENTS / SAPUI5_CUSTOM / BTP_MOBILE / DYNPRO_LEGACY).
+# Multi-stack permitido: si el requisito mezcla, se agregan las tareas
+# de cada uno (pero consolidando duplicados).
+
+work_packages:
+
+  # --------------------------------------------------------------
+  # SIEMPRE — Test Plan + iteración de desarrollo (raíz)
+  # --------------------------------------------------------------
+  - id: test_plan
+    type_name: Test Plan
+    subject_template: "Plan de pruebas: {parent_subject}"
+    hours_range: [4, 6, 10]
+    applies_when: "siempre — todo requisito necesita plan de pruebas"
+    description_template: |
+      Plan de pruebas del requisito padre #{parent_id}.
+      Incluye casos de aceptación (Dado/Cuando/Entonces) derivados de la spec.
+
+  - id: dev_iteration
+    type_name: Development Iteration
+    subject_template: "Iteración 1: {parent_subject}"
+    hours_range: [0, 0, 0]   # contenedor — el esfuerzo está en sus hijos
+    applies_when: "siempre — agrupa las tareas técnicas"
+    description_template: |
+      Sprint de desarrollo para implementar el requisito #{parent_id}.
+
+  # --------------------------------------------------------------
+  # ABAP RAP (Clean-Core)
+  # --------------------------------------------------------------
+  - id: backend_data_model
+    type_name: Backend Task
+    parent: dev_iteration
+    subject_template: "Modelo de datos: tablas Z + CDS views"
+    hours_range: [6, 10, 16]
+    applies_when: "el requisito necesita persistencia propia (tabla Z o usa entidades CDS custom)"
+    consolidation_rule: |
+      UN SOLO WP que cubra TODAS las CDS y tablas Z del requisito.
+      Horas escaladas según número de entidades: base × (1 + 0.3 × (n_entidades - 1)).
+    description_template: |
+      Tablas Z y CDS views requeridos:
+      {entidades_listadas}
+
+  - id: backend_business_object
+    type_name: Backend Task
+    parent: dev_iteration
+    subject_template: "RAP Business Object + Behavior"
+    hours_range: [12, 16, 24]
+    applies_when: "el requisito tiene operaciones de escritura (Create/Update/Delete) con reglas de negocio"
+    consolidation_rule: |
+      UN SOLO WP para el BO raíz del requisito. Si hay BOs anidados, se mencionan
+      en la descripción pero NO se crean WPs separados (escala horas en su lugar).
+    description_template: |
+      BDEF + behavior implementation classes.
+      Validaciones, determinations, actions:
+      {reglas_listadas}
+
+  - id: backend_authorization
+    type_name: Backend Task
+    parent: dev_iteration
+    subject_template: "Autorización: roles PFCG y authorization-as-code"
+    hours_range: [4, 6, 10]
+    applies_when: "el requisito define roles SAP específicos (Z_BR_*) en la sección Actores y permisos"
+    description_template: |
+      Roles a crear/mantener:
+      {roles_listados}
+      Authorization-as-code en BDEF.
+
+  - id: backend_integration
+    type_name: Backend Task
+    parent: dev_iteration
+    subject_template: "Integraciones: BAPIs / IDocs / OData externo"
+    hours_range: [8, 12, 20]
+    applies_when: "el requisito menciona BAPIs específicas, llamadas a sistemas externos o publicación de OData"
+    consolidation_rule: |
+      UN solo WP que liste TODAS las integraciones del requisito.
+      Horas escaladas: base × (1 + 0.4 × (n_integraciones - 1)).
+    description_template: |
+      Integraciones requeridas:
+      {integraciones_listadas}
+
+  # --------------------------------------------------------------
+  # FIORI UI (Elements u OData service consumer)
+  # --------------------------------------------------------------
+  - id: api_odata_service
+    type_name: API Task
+    parent: dev_iteration
+    subject_template: "Servicio OData v4 (UI Service)"
+    hours_range: [4, 6, 10]
+    applies_when: "hay UI (Fiori Elements o SAPUI5 custom) que requiera un servicio OData"
+    description_template: |
+      Service Definition + Service Binding (OData v4).
+      Expone el BO al frontend.
+
+  - id: ui_fiori_elements
+    type_name: UI Task
+    parent: dev_iteration
+    subject_template: "App Fiori Elements: {n_vistas} vistas"
+    hours_range: [16, 24, 40]
+    applies_when: "el prototipo está alineado a patrones Fiori Elements (List Report + Object Page + EditableGrid)"
+    consolidation_rule: |
+      UN SOLO WP por app Fiori. Horas escaladas: base × (1 + 0.2 × (n_vistas - 2)).
+      Customizaciones (annotations CDS, custom controls) se mencionan en descripción.
+    description_template: |
+      App Fiori Elements con {n_vistas} vistas: {vistas_listadas}.
+      Customizaciones: {customizaciones}.
+
+  - id: ui_sapui5_custom
+    type_name: UI Task
+    parent: dev_iteration
+    subject_template: "App SAPUI5 custom: {nombre_app}"
+    hours_range: [40, 60, 96]
+    applies_when: "el requisito necesita una UI con lógica compleja que NO encaja en Fiori Elements (workflows custom, visualizaciones especiales)"
+    description_template: |
+      App SAPUI5 freestyle con componentes:
+      {componentes_listados}
+
+  - id: ui_btp_mobile
+    type_name: UI Task
+    parent: dev_iteration
+    subject_template: "App BTP Mobile Services: {nombre_app}"
+    hours_range: [60, 90, 140]
+    applies_when: "el requisito menciona uso offline, captura en campo, o explícitamente BTP Mobile"
+    description_template: |
+      App MDK (Mobile Development Kit) con sincronización offline.
+      Componentes: {componentes_listados}.
+
+  - id: ui_flp_integration
+    type_name: UI Task
+    parent: dev_iteration
+    subject_template: "Integración Fiori Launchpad: tile + roles"
+    hours_range: [3, 5, 8]
+    applies_when: "siempre que haya una nueva app Fiori/UI5/Mobile (necesita tile en FLP)"
+    description_template: |
+      Tile + Target Mapping + asignación a roles PFCG.
+
+  # --------------------------------------------------------------
+  # DYNPRO LEGACY (excepcional)
+  # --------------------------------------------------------------
+  - id: ui_dynpro
+    type_name: UI Task
+    parent: dev_iteration
+    subject_template: "Dynpro clásico: {nombre_tx}"
+    hours_range: [20, 32, 48]
+    applies_when: "el requisito EXPLÍCITAMENTE pide Dynpro / transacción Z clásica (Clean-Core lo evita)"
+    description_template: |
+      Pantalla Dynpro + módulos PBO/PAI.
+      ⚠️ Va contra Clean-Core — confirmar con arquitectura.
+
+  # --------------------------------------------------------------
+  # CALIDAD Y DESPLIEGUE
+  # --------------------------------------------------------------
+  - id: tech_qa
+    type_name: Technical QA
+    parent: dev_iteration
+    subject_template: "QA técnica: ABAP Unit + Code Inspector + ATC"
+    hours_range: [6, 8, 12]
+    applies_when: "siempre que haya desarrollo ABAP nuevo"
+    description_template: |
+      Tests ABAP Unit de BO + utilidades. Code Inspector + ATC clean.
+      Coverage objetivo ≥ 70%.
+
+  - id: ui_tests
+    type_name: Technical QA
+    parent: dev_iteration
+    subject_template: "Tests UI: OPA5 / wdi5"
+    hours_range: [4, 6, 10]
+    applies_when: "hay app Fiori/UI5 nueva"
+    description_template: |
+      Tests OPA5 (Fiori Elements) o wdi5 (UI5 custom).
+      Casos de uso principales del prototipo.
+
+  - id: functional_testing
+    type_name: Functional Testing
+    subject_template: "Pruebas funcionales: {parent_subject}"
+    hours_range: [6, 10, 16]
+    applies_when: "siempre — el consultor funcional valida criterios de aceptación"
+    description_template: |
+      Ejecución de los casos de aceptación del Test Plan.
+
+  - id: uat
+    type_name: UAT
+    subject_template: "UAT: {parent_subject}"
+    hours_range: [4, 8, 16]
+    applies_when: "siempre — usuario de negocio valida en pre-prod"
+    description_template: |
+      User Acceptance Testing con el usuario final.
+      Sign-off requerido antes del despliegue a producción.
+
+  - id: deployment
+    type_name: Deployment
+    subject_template: "Despliegue a producción: {parent_subject}"
+    hours_range: [2, 4, 8]
+    applies_when: "siempre — transports a producción"
+    description_template: |
+      Cadena de transports: DEV → QAS → PRD.
+      Tile FLP activado, roles distribuidos.
+
+# Reglas globales:
+#
+# 1. CONSOLIDAR sobre PULVERIZAR: si la spec describe 10 campos en una
+#    sola entidad, NO crear 10 WPs separados — crear UN solo Backend Task
+#    de "Modelo de datos" con horas escaladas.
+#
+# 2. NO crear WPs cuyo `applies_when` no se cumpla. Mejor un plan corto
+#    realista que un plan inflado con tareas innecesarias.
+#
+# 3. Si la spec menciona algo no cubierto en esta plantilla (ej. integración
+#    con servicio raro), el agente lo agrega como WP custom con tipo
+#    `Backend Task` o `UI Task` según corresponda, marcando en descripción
+#    "fuera de plantilla — revisar estimación".
+#
+# 4. Las horas devueltas son SIEMPRE rango [optimista, realista, pesimista]
+#    + comentario breve de los factores de complejidad considerados.
+#
+# 5. Dependencias entre WPs (para Gantt):
+#    - backend_data_model → backend_business_object → api_odata_service → ui_*
+#    - todos los UI/backend → tech_qa + ui_tests
+#    - tech_qa → functional_testing → uat → deployment
+
+calendar:
+  hours_per_day: 8
+  working_days: [Mon, Tue, Wed, Thu, Fri]
+  # Para v1 no consideramos feriados — se puede ajustar en config.py o en
+  # un campo extra del WP padre.

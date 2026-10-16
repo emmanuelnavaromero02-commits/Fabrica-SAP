@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fábrica de Software — Guía de control para el Administrador de Proyectos</title>
+<style>
+  :root{
+    --tinta:#1d2433; --suave:#5b6678; --linea:#d7dce5; --fondo:#f6f8fb;
+    --gate:#ffe3e3; --gate-bd:#e03131; --espera:#fff3bf; --espera-bd:#e8a000;
+    --ok:#d3f9d8; --ok-bd:#2b8a3e;
+    --usuario:#fff3e0; --usuario-bd:#df6e0c;     /* usuario clave (cliente / usuario final) */
+    --consultor:#e8f5e9; --consultor-bd:#107e3e; /* consultor funcional (cliente) */
+    --fabrica:#e3f2fd; --fabrica-bd:#0a6ed1;     /* swf-funcional (fábrica interna) */
+    --agente:#f3e8ff; --agente-bd:#7048e8;       /* agente IA */
+    --dev:#e6fcf5; --dev-bd:#0ca678; --test:#f1f3f5; --test-bd:#495057;
+    --loop:#fff9db; --loop-bd:#f08c00;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+    color:var(--tinta); margin:0; background:#fff; line-height:1.45;
+  }
+  .pagina{
+    width:210mm; min-height:297mm; padding:14mm 14mm 12mm; margin:0 auto;
+    page-break-after:always;
+  }
+  .pagina:last-child{page-break-after:auto;}
+  h1{font-size:21px; margin:0 0 2px;}
+  h2{font-size:15px; margin:18px 0 8px; padding-bottom:4px; border-bottom:2px solid var(--linea);}
+  .sub{color:var(--suave); font-size:12.5px; margin:0 0 14px;}
+  p,li,td,th{font-size:12px;}
+  small{font-size:10.5px; color:var(--suave);}
+
+  /* ---- Flujo horizontal de etapas (one-pager) ---- */
+  .flujo{display:flex; align-items:stretch; gap:0; flex-wrap:wrap;}
+  .etapa{
+    flex:1 1 0; min-width:84px; border:1px solid var(--linea); border-radius:8px;
+    padding:8px 7px; text-align:center; background:var(--fondo); position:relative;
+    margin:0 9px 6px 0;
+  }
+  .etapa .ico{font-size:18px; display:block;}
+  .etapa .ttl{font-weight:600; font-size:11.5px; display:block; margin-top:2px;}
+  .etapa .st{display:block; font-size:9.5px; color:var(--suave); margin-top:3px;}
+  .etapa.gate{background:var(--gate); border-color:var(--gate-bd);}
+  .etapa.gate .badge{
+    position:absolute; top:-9px; left:50%; transform:translateX(-50%);
+    background:var(--gate-bd); color:#fff; font-size:8.5px; font-weight:700;
+    padding:1px 6px; border-radius:10px; white-space:nowrap;
+  }
+  .etapa.fin{background:var(--ok); border-color:var(--ok-bd);}
+  .flecha{align-self:center; color:var(--suave); font-size:16px; margin:0 1px 6px;}
+
+  /* ---- Cajas de espera ---- */
+  .espera-wrap{display:flex; gap:10px; margin:6px 0 2px;}
+  .espera{
+    flex:1; background:var(--espera); border:1px solid var(--espera-bd);
+    border-radius:8px; padding:8px 10px;
+  }
+  .espera b{display:block;}
+
+  /* ---- Tabla de control ---- */
+  table{width:100%; border-collapse:collapse; margin-top:6px;}
+  th,td{border:1px solid var(--linea); padding:5px 7px; text-align:left; vertical-align:top;}
+  th{background:var(--fondo); font-weight:600;}
+  .pill{display:inline-block; padding:1px 7px; border-radius:10px; font-size:10px; font-weight:600;}
+  .pill.gate{background:var(--gate); color:var(--gate-bd);}
+  .pill.espera{background:var(--espera); color:#b07600;}
+  .pill.run{background:var(--agente); color:var(--agente-bd);}
+  .pill.ok{background:var(--ok); color:var(--ok-bd);}
+  .rolchip{display:inline-block; padding:1px 7px; border-radius:5px; font-size:10px; font-weight:700;}
+  .rc-fab{background:var(--fabrica); color:var(--fabrica-bd);}
+  .rc-con{background:var(--consultor); color:var(--consultor-bd);}
+  .rc-usu{background:var(--usuario); color:var(--usuario-bd);}
+
+  /* ---- Mockup inbox ---- */
+  .inbox{border:1px solid var(--linea); border-radius:10px; overflow:hidden; margin-top:6px;}
+  .inbox .barra{background:var(--tinta); color:#fff; padding:7px 12px; font-size:12px; font-weight:600;}
+  .inbox table{margin:0;}
+  .inbox th{background:#eef1f6;}
+  .turno{font-weight:700; color:var(--gate-bd);}
+
+  /* ---- Principios ---- */
+  .princ{display:flex; gap:10px; margin-top:8px;}
+  .princ .card{flex:1; border:1px solid var(--linea); border-left:4px solid var(--agente-bd); border-radius:6px; padding:8px 10px; background:var(--fondo);}
+  .princ .card b{display:block; margin-bottom:3px;}
+
+  /* ---- Swimlane (página 2) ---- */
+  .lanes{display:grid; grid-template-columns:118px repeat(7,1fr); border:1px solid var(--linea); border-radius:8px; overflow:hidden;}
+  .lanes .cab{background:var(--tinta); color:#fff; font-size:9.3px; font-weight:600; padding:6px 4px; text-align:center; border-right:1px solid #2c3344;}
+  .lanes .cab.rol{background:#0b1020; text-align:left;}
+  .lanes .rol-lbl{font-size:10px; font-weight:700; padding:8px 7px; display:flex; flex-direction:column; justify-content:center; border-top:1px solid var(--linea); border-right:1px solid var(--linea);}
+  .lanes .cell{min-height:50px; padding:5px 4px; border-top:1px solid var(--linea); border-right:1px solid var(--linea); display:flex; align-items:center; justify-content:center;}
+  .step{font-size:9.4px; text-align:center; border-radius:6px; padding:5px 4px; width:100%; line-height:1.22;}
+  .step.usuario{background:var(--usuario); border:1px solid var(--usuario-bd);}
+  .step.consultor{background:var(--consultor); border:1px solid var(--consultor-bd);}
+  .step.fabrica{background:var(--fabrica); border:1px solid var(--fabrica-bd);}
+  .step.agente{background:var(--agente); border:1px solid var(--agente-bd);}
+  .step.dev{background:var(--dev); border:1px solid var(--dev-bd);}
+  .step.test{background:var(--test); border:1px solid var(--test-bd);}
+  .step.gate{outline:2px solid var(--gate-bd); outline-offset:1px;}
+  .lane-usuario{background:#fffaf3;} .lane-consultor{background:#f4fbf5;}
+  .lane-fabrica{background:#f3f9ff;} .lane-agente{background:#faf6ff;}
+  .lane-dev{background:#f3fcf9;} .lane-test{background:#fafbfc;}
+  .leyenda{display:flex; gap:12px; flex-wrap:wrap; margin-top:10px; font-size:10px;}
+  .leyenda span{display:inline-flex; align-items:center; gap:5px;}
+  .sw{width:12px; height:12px; border-radius:3px; display:inline-block;}
+
+  /* ---- Loop SDD de desarrollo (roadmap, fase 2) ---- */
+  .roadmap-tag{display:inline-block; background:var(--loop-bd); color:#fff; font-size:9.5px; font-weight:700; padding:1px 8px; border-radius:10px; vertical-align:middle; margin-left:6px;}
+  .loopwrap{border:2px dashed var(--loop-bd); background:var(--loop); border-radius:10px; padding:12px 14px; margin-top:6px;}
+  .loopflow{display:flex; align-items:stretch; flex-wrap:wrap; gap:5px;}
+  .lbox{background:#fff; border:1px solid var(--linea); border-radius:8px; padding:7px 8px; font-size:10px; text-align:center; flex:1; min-width:96px; display:flex; flex-direction:column; justify-content:center;}
+  .lbox b{display:block; font-size:10.5px; margin-bottom:2px;}
+  .lbox.spec{border-color:var(--gate-bd); background:#fff5f5;}
+  .lbox.gen{border-color:var(--dev-bd);}
+  .lbox.abap{border-color:var(--fabrica-bd);}
+  .lbox.ut{border-color:var(--test-bd);}
+  .larrow{align-self:center; color:var(--loop-bd); font-weight:700; font-size:16px;}
+  .loopback{text-align:center; color:var(--loop-bd); font-weight:700; font-size:10.5px; margin-top:8px; border-top:1px dashed var(--loop-bd); padding-top:6px;}
+  .skills{display:flex; gap:6px; flex-wrap:wrap; margin-top:9px; align-items:center;}
+  .skills .lbl{font-size:10px; color:var(--suave);}
+  .skill{background:#fff; border:1px solid var(--dev-bd); color:var(--dev-bd); border-radius:6px; padding:2px 8px; font-size:10px; font-family:Consolas,monospace;}
+
+  @media print{ body{-webkit-print-color-adjust:exact; print-color-adjust:exact;} .pagina{margin:0;} }
+</style>
+</head>
+<body>
+
+<!-- ===================== PÁGINA 1: ONE-PAGER ===================== -->
+<section class="pagina">
+  <h1>Fábrica de Software · Cómo se controla un requerimiento</h1>
+  <p class="sub">Guía rápida para el Administrador de Proyectos — dónde está cada requerimiento, de quién es el turno y qué decisión falta.</p>
+
+  <h2>El recorrido de un requerimiento (7 etapas)</h2>
+  <div class="flujo">
+    <div class="etapa"><span class="ico">📥</span><span class="ttl">Recibido</span><span class="st">se crea el requerimiento</span></div>
+    <span class="flecha">→</span>
+    <div class="etapa"><span class="ico">🤖</span><span class="ttl">Generando</span><span class="st">OP: En revisión</span></div>
+    <span class="flecha">→</span>
+    <div class="etapa gate"><span class="badge">DECISIÓN 1</span><span class="ico">🔍</span><span class="ttl">Revisión Fábrica</span><span class="st">OP: Aprobación funcional</span></div>
+    <span class="flecha">→</span>
+    <div class="etapa gate"><span class="badge">DECISIÓN 2</span><span class="ico">👥</span><span class="ttl">Validación Cliente</span><span class="st">OP: VoBo del cliente</span></div>
+    <span class="flecha">→</span>
+    <div class="etapa"><span class="ico">🛠</span><span class="ttl">Desarrollo</span><span class="st">OP: En desarrollo</span></div>
+    <span class="flecha">→</span>
+    <div class="etapa"><span class="ico">🧪</span><span class="ttl">Pruebas</span><span class="st">OP: Lista para pruebas</span></div>
+    <span class="flecha">→</span>
+    <div class="etapa fin"><span class="ico">✅</span><span class="ttl">Cerrado</span><span class="st">terminado</span></div>
+  </div>
+  <p><small>El agente de IA genera el <b>paquete funcional</b> (especificación + prototipo + plan de pruebas). Nada pasa a Desarrollo sin las <b>dos decisiones humanas</b> marcadas en rojo.</small></p>
+
+  <h2>Quiénes participan (los tres roles funcionales + ejecución)</h2>
+  <table>
+    <tr><th style="width:20%">Rol</th><th style="width:32%">Quién es</th><th>Dónde decide / actúa</th></tr>
+    <tr><td><span class="rolchip rc-fab">SwF Funcional</span></td><td>Funcional <b>de la fábrica</b> (interno)</td><td>🔍 <b>Revisión Fábrica</b> — valida funcionalmente el paquete (<b>Decisión 1</b>). También valida la entrada, arranca el agente y estima.</td></tr>
+    <tr><td><span class="rolchip rc-con">Consultor funcional</span></td><td>Funcional <b>del cliente</b></td><td>👥 <b>Validación Cliente</b> — da el VoBo (<b>Decisión 2</b>).</td></tr>
+    <tr><td><span class="rolchip rc-usu">Usuario clave</span></td><td><b>Usuario final</b> / dueño del proceso</td><td>👥 <b>Validación Cliente</b> — da el VoBo (<b>Decisión 2</b>).</td></tr>
+    <tr><td>Desarrollador · Tester</td><td>SwF Desarrollador, SwF Tester</td><td>🛠 Desarrollo · 🧪 Pruebas (tras el VoBo del cliente).</td></tr>
+  </table>
+  <p><small>Hay <b>dos validaciones funcionales distintas</b>: primero la <b>interna</b> (SwF Funcional) y luego la <b>del cliente</b> (Consultor funcional + Usuario clave). Cuando una persona tiene varios roles, manda la voz del cliente sobre la de la fábrica.</small></p>
+
+  <h2>Antes de empezar: validación de entrada</h2>
+  <div class="espera-wrap">
+    <div class="espera">
+      <b>Si lo crea el Cliente (Consultor funcional o Usuario clave)</b>
+      El requerimiento queda en <b>“Pendiente validación”</b>. Un SwF Funcional debe revisarlo y pulsar <b>“Validar y enviar al agente”</b> para que arranque. <small>Hasta entonces no se procesa nada.</small>
+    </div>
+    <div class="espera">
+      <b>Si lo crea la Fábrica (SwF Funcional / Admin)</b>
+      Arranca directo: el agente empieza a generar el paquete funcional sin paso de validación previo.
+    </div>
+  </div>
+
+  <h2>Señales que exigen acción (un requerimiento “esperando a una persona”)</h2>
+  <table>
+    <tr><th style="width:26%">Señal</th><th style="width:38%">Qué significa</th><th style="width:36%">Quién debe actuar</th></tr>
+    <tr><td><span class="pill espera">Pendiente validación</span></td><td>Lo creó un cliente; aún no entra a la fábrica.</td><td>SwF Funcional / Admin</td></tr>
+    <tr><td><span class="pill espera">Esperando clarificación</span></td><td>El agente tiene preguntas abiertas y se detuvo.</td><td>Quien pueda responderlas (negocio / funcional)</td></tr>
+    <tr><td><span class="pill gate">Revisión Fábrica · Decisión 1</span></td><td>Hay paquete; falta iterar / aprobar / rechazar.</td><td>SwF Funcional (revisor de la fábrica)</td></tr>
+    <tr><td><span class="pill gate">Validación Cliente · Decisión 2</span></td><td>Falta el VoBo del cliente sobre el paquete aprobado.</td><td>Consultor funcional / Usuario clave</td></tr>
+    <tr><td><span class="pill run">Desarrollo / Pruebas</span></td><td>Ejecución posterior al VoBo.</td><td>Desarrollador / Tester</td></tr>
+    <tr><td><span class="pill ok">Cerrado</span></td><td>Requerimiento terminado.</td><td>—</td></tr>
+  </table>
+
+  <h2>El tablero de control (así se ve el inbox)</h2>
+  <div class="inbox">
+    <div class="barra">📋 Inbox de la Fábrica — “Mis pendientes”</div>
+    <table>
+      <tr><th>Requerimiento</th><th>Etapa</th><th>Estado en OpenProject</th><th>Responsable</th><th>¿Mi turno?</th></tr>
+      <tr><td>#39 · Alta de cliente</td><td>🔍 Revisión Fábrica</td><td>Aprobación funcional</td><td>sin asignar (pool SwF)</td><td class="turno">► SÍ</td></tr>
+      <tr><td>#41 · Reporte de ventas</td><td>👥 Validación Cliente</td><td>VoBo del cliente</td><td>María (Usuario clave)</td><td>—</td></tr>
+      <tr><td>#43 · Integración pagos</td><td>🤖 Generando</td><td>Esperando clarificación</td><td>sin asignar</td><td class="turno">► SÍ</td></tr>
+      <tr><td>#45 · Panel de métricas</td><td>🛠 Desarrollo</td><td>En desarrollo</td><td>Jorge (Desarrollador)</td><td>—</td></tr>
+    </table>
+  </div>
+  <p><small>El inbox marca solo lo que cada persona debe atender (“¿Mi turno?”). Si un requerimiento está <b>sin asignar</b> en su etapa, cae al <i>pool</i> del rol responsable y cualquiera de ese rol puede <b>“Tomar el WP”</b>.</small></p>
+
+  <h2>Tres claves para el control</h2>
+  <div class="princ">
+    <div class="card"><b>Dos compuertas obligatorias</b>Nada avanza a Desarrollo sin la aprobación del revisor de Fábrica (1) y el VoBo del cliente (2). Ahí mide el avance y desbloquea.</div>
+    <div class="card"><b>Responsable por etapa</b>Cada etapa tiene un rol dueño. Ve quién lo tiene (assignee) y quién debería tenerlo; reasigna o exige “tomar” si está parado.</div>
+    <div class="card"><b>Todo queda registrado</b>Cada decisión, comentario del agente y versión del paquete queda trazado en OpenProject y archivado (versión v01 al aprobar).</div>
+  </div>
+</section>
+
+<!-- ===================== PÁGINA 2: SWIMLANE ===================== -->
+<section class="pagina">
+  <h1>Flujo por rol (carriles) · quién hace qué en cada fase</h1>
+  <p class="sub">Lectura de izquierda a derecha. Las casillas con borde rojo son las <b>decisiones humanas</b> que detienen el flujo hasta que alguien actúa. El lado cliente tiene <b>dos roles</b>: Consultor funcional y Usuario clave.</p>
+
+  <div class="lanes">
+    <!-- cabecera de fases -->
+    <div class="cab rol">ROL ↓ / FASE →</div>
+    <div class="cab">1 · Entrada</div>
+    <div class="cab">2 · Validación</div>
+    <div class="cab">3 · Generación</div>
+    <div class="cab">4 · Revisión Fábrica</div>
+    <div class="cab">5 · Validación Cliente</div>
+    <div class="cab">6 · Desarrollo</div>
+    <div class="cab">7 · Pruebas / Cierre</div>
+
+    <!-- Usuario clave (cliente) -->
+    <div class="rol-lbl lane-usuario">👤 Usuario clave<small>cliente · usuario final</small></div>
+    <div class="cell lane-usuario"><div class="step usuario">Crea el<br>requerimiento</div></div>
+    <div class="cell lane-usuario"></div>
+    <div class="cell lane-usuario"></div>
+    <div class="cell lane-usuario"></div>
+    <div class="cell lane-usuario"><div class="step usuario gate">DECISIÓN 2<br>Da VoBo</div></div>
+    <div class="cell lane-usuario"></div>
+    <div class="cell lane-usuario"></div>
+
+    <!-- Consultor funcional (cliente) -->
+    <div class="rol-lbl lane-consultor">🧑‍💼 Consultor funcional<small>cliente</small></div>
+    <div class="cell lane-consultor"><div class="step consultor">Crea el<br>requerimiento</div></div>
+    <div class="cell lane-consultor"></div>
+    <div class="cell lane-consultor"></div>
+    <div class="cell lane-consultor"></div>
+    <div class="cell lane-consultor"><div class="step consultor gate">DECISIÓN 2<br>Da VoBo</div></div>
+    <div class="cell lane-consultor"></div>
+    <div class="cell lane-consultor"></div>
+
+    <!-- SwF Funcional (fábrica) -->
+    <div class="rol-lbl lane-fabrica">🏭 SwF Funcional<small>fábrica (interno)</small></div>
+    <div class="cell lane-fabrica"></div>
+    <div class="cell lane-fabrica"><div class="step fabrica">Valida entrada y<br>“envía al agente”</div></div>
+    <div class="cell lane-fabrica"></div>
+    <div class="cell lane-fabrica"><div class="step fabrica gate">DECISIÓN 1<br>Itera / aprueba /<br>rechaza el paquete</div></div>
+    <div class="cell lane-fabrica"></div>
+    <div class="cell lane-fabrica"></div>
+    <div class="cell lane-fabrica"></div>
+
+    <!-- Agente IA -->
+    <div class="rol-lbl lane-agente">🤖 Agente IA</div>
+    <div class="cell lane-agente"></div>
+    <div class="cell lane-agente"></div>
+    <div class="cell lane-agente"><div class="step agente">Genera paquete:<br>spec + prototipo<br>+ plan de pruebas</div></div>
+    <div class="cell lane-agente"><div class="step agente">Re-genera con el<br>feedback del revisor</div></div>
+    <div class="cell lane-agente"></div>
+    <div class="cell lane-agente"></div>
+    <div class="cell lane-agente"></div>
+
+    <!-- Desarrollo -->
+    <div class="rol-lbl lane-dev">🛠 Desarrollo<small>SwF Desarrollador</small></div>
+    <div class="cell lane-dev"></div>
+    <div class="cell lane-dev"></div>
+    <div class="cell lane-dev"></div>
+    <div class="cell lane-dev"></div>
+    <div class="cell lane-dev"></div>
+    <div class="cell lane-dev"><div class="step dev">Implementa lo<br>aprobado *</div></div>
+    <div class="cell lane-dev"></div>
+
+    <!-- Pruebas -->
+    <div class="rol-lbl lane-test">🧪 Pruebas<small>SwF Tester</small></div>
+    <div class="cell lane-test"></div>
+    <div class="cell lane-test"></div>
+    <div class="cell lane-test"></div>
+    <div class="cell lane-test"></div>
+    <div class="cell lane-test"></div>
+    <div class="cell lane-test"></div>
+    <div class="cell lane-test"><div class="step test">Ejecuta pruebas<br>→ Cierra ✅</div></div>
+  </div>
+
+  <div class="leyenda">
+    <span><i class="sw" style="background:var(--usuario);border:1px solid var(--usuario-bd)"></i> Usuario clave (cliente)</span>
+    <span><i class="sw" style="background:var(--consultor);border:1px solid var(--consultor-bd)"></i> Consultor funcional (cliente)</span>
+    <span><i class="sw" style="background:var(--fabrica);border:1px solid var(--fabrica-bd)"></i> SwF Funcional (fábrica)</span>
+    <span><i class="sw" style="background:var(--agente);border:1px solid var(--agente-bd)"></i> Agente IA</span>
+    <span><i class="sw" style="background:var(--dev);border:1px solid var(--dev-bd)"></i> Desarrollo</span>
+    <span><i class="sw" style="background:var(--test);border:1px solid var(--test-bd)"></i> Pruebas</span>
+    <span><i class="sw" style="outline:2px solid var(--gate-bd);background:#fff"></i> Decisión humana (detiene el flujo)</span>
+  </div>
+  <p style="margin-top:6px"><small>* La fase de Desarrollo evolucionará a un <b>loop automático con IA</b> (ver abajo).</small></p>
+
+  <h2>Hacia dónde va el Desarrollo <span class="roadmap-tag">FASE 2 · ROADMAP</span></h2>
+  <p style="margin:2px 0 6px"><small>Enfoque <b>SDD (Specification Driven Development)</b>: la especificación no solo se lee — lleva <b>aseveraciones verificables, sin ambigüedad</b>, para que un robot (agente IA) la <b>ejecute</b> directamente. La fase 6 dejará de ser un solo paso manual y pasará a ser un <b>ciclo automático</b> que se repite hasta lograr el resultado.</small></p>
+  <div class="loopwrap">
+    <div class="loopflow">
+      <div class="lbox spec"><b>📄 Especificación ejecutable</b>aseveraciones sin ambigüedad (insumo del robot)</div>
+      <span class="larrow">→</span>
+      <div class="lbox gen"><b>🤖 Generación automática</b>skill back + skill front + skill integración</div>
+      <span class="larrow">→</span>
+      <div class="lbox abap"><b>🧑‍🔧 Afinación</b>consultor ABAP ajusta lo generado</div>
+      <span class="larrow">→</span>
+      <div class="lbox ut"><b>🧪 Prueba unitaria</b>verifica contra las aseveraciones</div>
+    </div>
+    <div class="loopback">↩ Si la prueba no pasa, vuelve a generación — el ciclo se repite hasta cumplir las aseveraciones de la spec.</div>
+    <div class="skills">
+      <span class="lbl">Skills por proyecto (según el stack):</span>
+      <span class="skill">abapclasic.skill</span>
+      <span class="skill">abapcloud.skill</span>
+      <span class="skill">fiori.skill</span>
+      <span class="skill">cap.skill</span>
+      <span class="skill">…</span>
+    </div>
+  </div>
+
+  <h2>Casos especiales que el PM debe vigilar</h2>
+  <table>
+    <tr><th style="width:30%">Situación</th><th>Qué pasa en el flujo</th></tr>
+    <tr><td>🟡 El agente tiene dudas</td><td>El requerimiento se detiene en <b>“Esperando clarificación”</b> (fase 3). Alguien responde las preguntas y vuelve a generar.</td></tr>
+    <tr><td>🔁 El revisor pide cambios</td><td>En la Decisión 1, “iterar” devuelve el paquete al agente con feedback. Puede repetirse varias veces antes de aprobar.</td></tr>
+    <tr><td>❌ Rechazo</td><td>Tanto el SwF Funcional (Decisión 1) como el cliente (Decisión 2) pueden <b>rechazar</b>: el requerimiento se detiene y no avanza.</td></tr>
+    <tr><td>📌 Aprobación</td><td>Al aprobar la Decisión 1 se archiva una <b>versión definitiva (v01)</b> del paquete; lo posterior solo cambia vía solicitud de cambio (CR).</td></tr>
+  </table>
+  <p style="margin-top:14px;"><small>Documento generado para gestión de proyectos · Fábrica de Software (dark factory) · OpenProject + Gitea + agente IA · SDD.</small></p>
+</section>
+
+</body>
+</html>

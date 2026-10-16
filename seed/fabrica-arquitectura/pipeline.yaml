@@ -1,0 +1,126 @@
+# Pipeline declarativo de la fabrica de software (v7).
+#
+# Bloque 'diseno' (paquete funcional): genera CUATRO artefactos coordinados
+# en una iteracion con el agente:
+#   - spec.md                  -> especificacion/spec.md
+#   - prototipo.html           -> prototipo/prototipo.html
+#   - test-plan.md             -> test-plan/test-plan.md
+#   - assertions.json          -> especificacion/assertions.json  (contrato SDD)
+#
+# ESTIMACION (v7): tras aprobar el paquete funcional, una compuerta de fabrica
+# exige el estimado (rol swf-funcional). El flujo NO sigue sin estimado. El SwF
+# lo genera/ajusta en el tab Plan del inbox y fija la FECHA INICIAL (manual).
+#
+# Validacion del cliente en DOS compuertas SECUENCIALES: VoBo del consultor
+# funcional, luego VoBo del usuario-clave. Tras el VoBo del usuario-clave, el
+# bloque set_dates vuelca al WP: fecha inicial (manual) + fecha final (inicial +
+# calendar_days del estimado) + estatus. OP-minimal: solo el WP del
+# requerimiento con fechas + 1 estatus; el detalle de tiempos por etapa va al
+# Panel (timeline.json desde Temporal). Ver memoria op-simplificado.
+#
+# Fase de DESARROLLO: tras los 2 VoBos, el desarrollador LIBERA el item y entra
+# el agente 'desarrollo' (consume spec + assertions + skill, genera codigo). El
+# desarrollador itera con comentarios o aprueba -> 'Lista para pruebas' (QA).
+#
+# OP minimal: solo el WP del requerimiento (no se crean WP hijos). El prototipo
+# vive como artefacto en Gitea, no como WP.
+#
+# Modelo de versionado: cada iteracion SOBREESCRIBE el vigente en cada root y
+# acumula en {root}/historial-aprendizaje.md. Al APROBAR, snapshot inmutable a
+# {root}/versiones/v{N}/. Ver memoria versionado-artefactos.
+#
+# Tipos de bloque:
+#   - load_inputs        : trae descripcion + adjuntos + arquitectura.
+#   - agent              : un agente, una llamada. blocked_mode opcional.
+#   - agent_review_loop  : LOOP con revision humana. current_artifacts:[{key,path}]
+#                          (multi) o current_artifact_path (uno solo).
+#   - set_status         : transiciona el WP a un estado (estatus = etapa actual).
+#   - set_dates          : vuelca fecha inicial (manual) + final (del estimado) al WP.
+#   - human_gate         : pausa esperando POST /factory/{wp}/decision. Acepta
+#                          `stage` y `label` (para gates en cadena).
+
+version: 1
+
+pipeline:
+
+  - block: cargar_documentos
+    type: load_inputs
+
+  # === Paquete técnico (DISEÑO): Claude Code + MCP (rediseño) ===============
+  # El agente automático YA NO genera el paquete. Al validar se provisiona el
+  # repo del requerimiento TEMPRANO (phase=diseno: insumos + CLAUDE.md de diseño
+  # + MCP, SIN abapGit ni copia de paquete). El humano genera spec/prototipo/
+  # casos/soporte en Claude Code dentro de `diseno/` y los publica por GIT PUSH
+  # (git add diseno/ && commit && push); el inbox lee el paquete de `diseno/`. La
+  # etapa "Generando paquete" es una COMPUERTA MANUAL que se avanza con
+  # enviar_a_revision() (MCP) o el botón del inbox.
+  - block: provisionar_repo_diseno
+    type: provisionar_repo
+    phase: diseno
+
+  # allow_draft: la compuerta acepta el signal generar_borrador (ayudante
+  # OPCIONAL): corre el agente UNA vez para un borrador del paquete (spec +
+  # assertions) y vuelve a esperar. NO hay loop automático; el humano refina
+  # con Claude Code + MCP. Botón "Generar borrador con IA" / ♻️ en el inbox.
+  - block: gate_paquete_diseno
+    type: human_gate
+    stage: esperando_paquete_diseno
+    label: "Generando paquete (Claude Code)"
+    allow_draft: true
+
+  # === Estimacion (compuerta de fabrica) ====================================
+  # El flujo NO sigue sin estimado. El SwF Funcional genera/ajusta el estimado
+  # en el tab "Plan" del inbox, fija la FECHA INICIAL (manual) y aprueba esta
+  # compuerta. El estimado vive en estimacion/estimation.json.
+  - block: gate_estimacion
+    type: human_gate
+    stage: esperando_estimacion
+    label: "Estimacion"
+
+  # === Compuertas del cliente: DOS VoBos SECUENCIALES =======================
+  - block: status_en_revision
+    type: set_status
+    status: "En revision"
+
+  - block: gate_vobo_funcional
+    type: human_gate
+    stage: esperando_vobo_funcional
+    label: "VoBo Consultor funcional"
+
+  - block: gate_vobo_usuario_clave
+    type: human_gate
+    stage: esperando_vobo_usuario_clave
+    label: "VoBo Usuario clave"
+
+  # Tras el VoBo del usuario-clave: volcar fecha inicial (manual) + fecha final
+  # (inicial + calendar_days del estimado) al WP. El estatus lo maneja el
+  # siguiente set_status.
+  - block: fijar_fechas
+    type: set_dates
+
+  # === DESARROLLO (repo por requerimiento) ==================================
+  # REDISENO: el agente YA NO genera codigo. El WP pasa a 'En desarrollo' y la
+  # fabrica crea UN repo por requerimiento bajo la org del CLIENTE (nombre =
+  # slug del titulo), sembrado con el paquete de diseno + adjuntos + esqueleto
+  # abapGit + CLAUDE.md. El humano lo clona y programa LOCAL con Claude Code/
+  # Codex, hace round-trip abapGit con el servidor SAP que aplique, exporta y
+  # hace push, y deja evidencias/doc tecnico/manual en /entregables (versionado,
+  # via el MCP fabrica). Cuando termina, LIBERA a pruebas (compuerta final).
+  - block: status_en_desarrollo
+    type: set_status
+    status: "En desarrollo"
+
+  - block: provisionar_repo
+    type: provisionar_repo
+
+  - block: gate_liberar_pruebas
+    type: human_gate
+    stage: esperando_liberacion_pruebas
+    label: "Liberar a pruebas"
+
+  # === Handoff a QA (FIN del ciclo de fabrica) ==============================
+  # 'Lista para pruebas' = el QA Tester (swf-tester) toma el item. La ejecucion
+  # automatica de pruebas contra assertions.json en sandbox es fase posterior.
+  - block: status_lista_pruebas
+    type: set_status
+    status: "Lista para pruebas"

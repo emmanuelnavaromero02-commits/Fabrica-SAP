@@ -1,0 +1,192 @@
+# Orquestador de la fabrica de software — stack local.
+#
+#   Temporal (server + UI + su Postgres) = orquestacion durable.
+#   worker   = ejecuta el FactoryWorkflow y sus activities.
+#   webhook  = recibe webhooks de OpenProject y expone la API de control.
+#
+# worker y webhook se unen tambien a la red del stack de ../local para
+# alcanzar OpenProject (web) y Gitea (gitea) por nombre de servicio.
+# Requiere que el stack de ../local este arriba (crea esa red).
+
+name: reqplatform-orquestador
+
+networks:
+  default:
+  reqplatform:
+    external: true
+    name: reqplatform-local_default
+
+volumes:
+  temporal_pgdata:
+  minio_data:
+
+services:
+  # ---------------- Temporal ----------------
+  temporal-db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: "${TEMPORAL_DB_PASSWORD}"
+    volumes:
+      - "temporal_pgdata:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  temporal:
+    image: temporalio/auto-setup:1.29.6.1
+    restart: unless-stopped
+    depends_on:
+      temporal-db:
+        condition: service_healthy
+    environment:
+      DB: postgres12
+      DB_PORT: "5432"
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: "${TEMPORAL_DB_PASSWORD}"
+      POSTGRES_SEEDS: temporal-db
+    ports:
+      - "127.0.0.1:7233:7233"
+
+  temporal-ui:
+    image: temporalio/ui:2.50.0
+    restart: unless-stopped
+    depends_on:
+      - temporal
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      # CORS apunta a la URL pública que el browser ve (oauth2-proxy en :8233).
+      TEMPORAL_CORS_ORIGINS: "http://localhost:8233"
+    # NO publicamos el puerto al host — solo se accede a través de oauth2-proxy.
+
+  # Reverse proxy con OIDC delante de Temporal Web. El browser le pega a
+  # localhost:8233 → oauth2-proxy valida la sesión KC → si OK, reenvía a
+  # temporal-ui:8080 internamente. Si no hay sesión, redirige a Keycloak.
+  temporal-auth-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.7.1
+    restart: unless-stopped
+    depends_on:
+      - temporal-ui
+    extra_hosts:
+      - "kc.fabrica.local:host-gateway"
+    environment:
+      # Provider Keycloak OIDC
+      OAUTH2_PROXY_PROVIDER: "keycloak-oidc"
+      OAUTH2_PROXY_CLIENT_ID: "temporal-web"
+      OAUTH2_PROXY_CLIENT_SECRET: "temporal-secret-local-2026"
+      OAUTH2_PROXY_OIDC_ISSUER_URL: "http://kc.fabrica.local:8090/realms/fabrica"
+      OAUTH2_PROXY_REDIRECT_URL: "http://localhost:8233/oauth2/callback"
+      # Upstream: temporal-ui dentro de la red docker (no exponer al host)
+      OAUTH2_PROXY_UPSTREAMS: "http://temporal-ui:8080"
+      # Listen
+      OAUTH2_PROXY_HTTP_ADDRESS: "0.0.0.0:4180"
+      # Sesión cookie firmada (32 chars min para AES-256)
+      OAUTH2_PROXY_COOKIE_SECRET: "fabro-temporal-cookie-secret-32c"
+      OAUTH2_PROXY_COOKIE_SECURE: "false"
+      OAUTH2_PROXY_COOKIE_DOMAINS: "localhost"
+      # Aceptar cualquier email (es realm interno, todos los users son legítimos)
+      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
+      # Validar email del IDP (no es API REST)
+      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
+      OAUTH2_PROXY_PASS_AUTHORIZATION_HEADER: "true"
+      OAUTH2_PROXY_PASS_USER_HEADERS: "true"
+      # Scopes mínimos
+      OAUTH2_PROXY_SCOPE: "openid profile email"
+    ports:
+      - "127.0.0.1:8233:4180"
+
+  # ---------------- Orquestador ----------------
+  worker:
+    build: ./app
+    restart: unless-stopped
+    depends_on:
+      - temporal
+    env_file:
+      - .env
+    command: ["python", "-u", "worker.py"]
+    networks:
+      - default
+      - reqplatform
+    extra_hosts:
+      - "kc.fabrica.local:host-gateway"
+
+  webhook:
+    build: ./app
+    restart: unless-stopped
+    depends_on:
+      - temporal
+    env_file:
+      - .env
+    command: ["uvicorn", "webhook:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks:
+      - default
+      - reqplatform
+    # kc.fabrica.local debe resolver al docker host (donde KC publica 8090)
+    # para que las llamadas server-to-server al token endpoint usen la
+    # MISMA URL que el browser. Necesario para que iss del token coincida.
+    extra_hosts:
+      - "kc.fabrica.local:host-gateway"
+
+  # MinIO — storage S3-compatible para adjuntos de requisitos. En AWS
+  # se reemplaza por S3 nativo cambiando S3_ENDPOINT_URL/credentials en .env.
+  # El browser sube DIRECTO con presigned PUT URL — no pasa por backend.
+  minio:
+    image: minio/minio:RELEASE.2025-01-20T14-49-07Z
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: "admin"
+      MINIO_ROOT_PASSWORD: "minio-local-2026-changeme"
+      # API publica en localhost — para presigned URLs el browser pega ahí
+      MINIO_BROWSER_REDIRECT_URL: "http://localhost:9001"
+    ports:
+      - "127.0.0.1:9000:9000"   # S3 API (browser sube aquí)
+      - "127.0.0.1:9001:9001"   # Admin console
+    volumes:
+      - "minio_data:/data"
+    networks:
+      - default
+      - reqplatform
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Crea el bucket al primer arranque (idempotente).
+  minio-init:
+    image: minio/mc:RELEASE.2025-01-17T23-25-50Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "
+      mc alias set fabro http://minio:9000 admin minio-local-2026-changeme &&
+      mc mb --ignore-existing fabro/fabro-attachments &&
+      mc anonymous set none fabro/fabro-attachments &&
+      echo OK_minio_bucket_ready
+      "
+    networks:
+      - default
+
+  # Panel de Control — app separada del inbox para fábrica interna
+  # (admin, swf-funcional, swf-desarrollador, swf-tester).
+  # Métricas, gestión de usuarios, configuración. Esqueleto en FASE 1.
+  panel:
+    build: ../panel/app
+    restart: unless-stopped
+    env_file:
+      - .env
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
+    ports:
+      - "127.0.0.1:8001:8001"
+    networks:
+      - default
+      - reqplatform
+    extra_hosts:
+      - "kc.fabrica.local:host-gateway"

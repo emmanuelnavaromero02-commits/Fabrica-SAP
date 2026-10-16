@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(docker compose -f local\\\\docker-compose.yml --project-directory local exec -T web sh -c \"grep -r 'property :' /app/lib/api/v3/work_packages/work_package_payload_representer.rb 2>/dev/null | head -40\" 2>&1)",
+      "PowerShell(\"=== buscar el atributo de notas/comentario en la API v3 de OpenProject ===\")"
+    ]
+  }
+}

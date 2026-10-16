@@ -1,0 +1,52 @@
+# Catálogo de la fábrica.
+#
+# PERFILES (stack): se eligen al VALIDAR un requisito. Cada perfil amarra el
+# skill de DISEÑO (gobierna spec + prototipo + casos de prueba: convenciones y
+# reglas de fidelidad de UI del stack) y el skill de DESARROLLO por defecto.
+# Agregar un stack nuevo (AWS/Azure/GCP/cualquier framework) = soltar un
+# design-*.md + un dev-*.skill + una entrada aquí. SIN código.
+#
+# El skill de diseño puede ser .md plano o un bundle .skill (ZIP). El de dev
+# referencia una clave de la lista `skills` de abajo.
+
+default_profile: sap-fiori
+
+profiles:
+  - key: sap-fiori
+    title: "SAP S/4HANA Cloud · Fiori Elements (Clean-Core)"
+    when_to_use: >
+      Capacidades NUEVAS en RISE S/4HANA bajo Clean-Core. Es el default.
+    design_skill: skills/design-sap-fiori.md
+    dev_skill_key: sap-abap-cloud
+
+  - key: sap-classic
+    title: "SAP ABAP Clásico · Dynpro / SAP GUI (legacy)"
+    when_to_use: >
+      Mantenimiento de objetos legacy ya existentes en SE80 (excepción
+      justificada; Clean-Core no permite classic para lo nuevo).
+    design_skill: skills/design-sap-classic.md
+    dev_skill_key: sap-abap-classic
+
+  # Ejemplo para un stack no-SAP (descomentar + soltar los archivos):
+  # - key: aws-react
+  #   title: "AWS · Frontend React + API serverless"
+  #   when_to_use: App web nueva sobre AWS.
+  #   design_skill: skills/design-aws-react.md
+  #   dev_skill_key: aws-react
+
+# ---------------------------------------------------------------------------
+# Skills de DESARROLLO (bundles .skill). Los referencia `dev_skill_key` arriba;
+# también pueblan el dropdown de "liberar desarrollo".
+default: sap-abap-cloud
+skills:
+  - key: sap-abap-cloud
+    title: ABAP Cloud (Clean-Core · RAP / CDS / Fiori Elements)
+    when_to_use: >
+      Capacidades nuevas en RISE S/4HANA bajo Clean-Core.
+    path: skills/sap-abap-cloud.skill
+
+  - key: sap-abap-classic
+    title: ABAP Clasico (Dynpro / SE80, legacy)
+    when_to_use: >
+      Mantenimiento de objetos legacy ya existentes en SE80.
+    path: skills/sap-abap-classic.skill

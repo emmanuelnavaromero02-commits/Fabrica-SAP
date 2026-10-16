@@ -1,0 +1,9 @@
+{
+  "mappers": [
+    {
+      "name": "OP Admin (rol admin -> op_admin)",
+      "fileName": "op-admin-mapper.js",
+      "description": "Emite op_admin=true si el usuario tiene el rol de realm admin (para OpenProject mapping_admin)."
+    }
+  ]
+}

@@ -158,7 +158,7 @@ def test_adt_xml_support() -> None:
     for kind in kinds:
         assert kind in OBJECT_PATHS
         xml = create_object_xml(kind, "ZTEST", "ZFAB", "Desc", "ES")
-        assert "adtcore:name=\"ZTEST\"" in xml
+        assert 'adtcore:name="ZTEST"' in xml
         assert "adtcore:packageRef" in xml
 
 

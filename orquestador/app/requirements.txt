@@ -1,0 +1,25 @@
+# Dependencias del orquestador.
+temporalio>=1.7,<2
+anthropic==0.104.1
+httpx>=0.28,<1
+fastapi>=0.115,<1
+uvicorn[standard]>=0.34,<1
+python-multipart>=0.0.9,<1
+PyYAML>=6,<7
+markdown>=3.6,<4
+# Conversión de adjuntos office a texto para que el agente IA los pueda leer.
+# Los archivos originales se mantienen como adjuntos del WP (referencia humana).
+python-docx>=1.1,<2
+openpyxl>=3.1,<4
+# Extracción de texto de PDFs (se manda al agente como texto: sin límite de
+# páginas ni explosión de tokens del render visual del PDF).
+pypdf>=4,<6
+# Storage S3-compatible (MinIO local, S3 en AWS)
+boto3>=1.34,<2
+aioboto3>=13,<14
+# DB de proyecto (read-model CQRS-lite que reemplaza a OpenProject)
+asyncpg>=0.30,<1
+# Auth (OIDC code flow contra Keycloak)
+authlib>=1.3,<2
+itsdangerous>=2.2,<3
+python-jose[cryptography]>=3.3,<4

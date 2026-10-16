@@ -1,0 +1,6 @@
+# Dependencias del servidor MCP de OpenProject.
+# fastmcp se fija a la ultima version estable (verificada en PyPI).
+# httpx se deja en un rango compatible para que resuelva con la que pida
+# fastmcp y evitar conflictos en el build.
+fastmcp==3.3.1
+httpx>=0.28,<1
