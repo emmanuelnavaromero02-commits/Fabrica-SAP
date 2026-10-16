@@ -37,6 +37,8 @@ fabrica-migrate = "fabrica.db.migrate:run"
 fabrica-mcp-conocimiento = "fabrica.mcp_servers.conocimiento:run"
 fabrica-replay = "fabrica.pilot.replay:run"
 fabrica-usuario = "fabrica.auth.keycloak_admin:run"
+fabrica-mcp-cpimig = "fabrica.mcp_servers.cpimig:run"
+fabrica-mcp-sapcfg = "fabrica.mcp_servers.sapcfg:run"
 
 [build-system]
 requires = ["hatchling"]

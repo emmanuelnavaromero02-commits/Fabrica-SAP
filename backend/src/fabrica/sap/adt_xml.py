@@ -16,6 +16,11 @@ OBJECT_PATHS = {
     "PROG": "/sap/bc/adt/programs/programs",
     "CLAS": "/sap/bc/adt/oo/classes",
     "INTF": "/sap/bc/adt/oo/interfaces",
+    "DDLS": "/sap/bc/adt/ddic/ddl/sources",
+    "BDEF": "/sap/bc/adt/bo/behaviordefinitions",
+    "SRVD": "/sap/bc/adt/ddic/srvd/sources",
+    "SRVB": "/sap/bc/adt/businessservices/bindings",
+    "DCLS": "/sap/bc/adt/acm/dcl/sources",
 }
 
 
@@ -60,6 +65,36 @@ def create_object_xml(kind: str, name: str, package: str, description: str, lang
             ' class:final="true" class:visibility="public"',
         ),
         "INTF": ("intf:abapInterface", "http://www.sap.com/adt/oo/interfaces", "INTF/OI", ""),
+        "DDLS": (
+            "ddl:ddlSource",
+            "http://www.sap.com/adt/ddic/ddlsources",
+            "DDLS/DF",
+            "",
+        ),
+        "BDEF": (
+            "bdef:behaviorDefinition",
+            "http://www.sap.com/adt/bo/behaviordefinitions",
+            "BDEF/BDO",
+            "",
+        ),
+        "SRVD": (
+            "srvd:serviceDefinition",
+            "http://www.sap.com/adt/ddic/srvd/sources",
+            "SRVD/SRV",
+            "",
+        ),
+        "SRVB": (
+            "srvb:serviceBinding",
+            "http://www.sap.com/adt/ddic/ServiceBindings",
+            "SRVB/SVB",
+            "",
+        ),
+        "DCLS": (
+            "dcl:dclSource",
+            "http://www.sap.com/adt/acm/dclsources",
+            "DCLS/DL",
+            "",
+        ),
     }[kind]
     prefix = root.split(":")[0]
     return (

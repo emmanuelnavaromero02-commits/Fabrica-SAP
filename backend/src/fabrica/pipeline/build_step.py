@@ -26,12 +26,22 @@ async def run_build(tools: StepTools, req: Requirement) -> StepResult:
         return StepResult("blocked", "No hay spec aprobada en el repo")
     spec = json.loads(raw)
     main = spec["objects"][0]
-    assertions = [Assertion(**a) for a in spec["assertions"]]
+    raw_assertions = await tools.repos.read_file(req.id, "diseno/assertions.json")
+    if raw_assertions is not None:
+        assertion_data = json.loads(raw_assertions)
+    else:
+        assertion_data = spec.get("assertions", [])
+    assertions = [Assertion(**a) for a in assertion_data]
     try:
         sap = await sap_for(tools.board, req.id, DESARROLLADOR.name)
     except SapNotConfigured as exc:
         return StepResult("blocked", str(exc))
-    verifier = AbapVerifier(sap, main_object=main, assertions=assertions)
+    cloud_mode = bool(
+        spec.get("cloud_mode")
+        or req.capability in ("abap_cloud", "rap", "fiori")
+        or str(main.get("type", "")).upper() in ("DDLS", "BDEF", "SRVD", "SRVB", "DCLS")
+    )
+    verifier = AbapVerifier(sap, main_object=main, assertions=assertions, cloud_mode=cloud_mode)
     prompt = (
         f"{await requirement_context(tools.board, req)}\n\n## Spec\n{spec['spec_markdown']}\n\n"
         f"Objeto principal: {main['name']}\n"

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
 Severity = Literal["error", "warning"]
 
@@ -29,7 +29,12 @@ class SapObject:
 class Assertion:
     id: str
     description: str
-    must_contain: str
+    must_contain: str = ""
+    dado: str | None = None
+    cuando: str | None = None
+    entonces: str | None = None
+    regla: str | None = None
+    datos: dict[str, Any] | None = None
 
 
 @dataclass
@@ -62,7 +67,7 @@ def assertion_findings(source: str, assertions: list[Assertion]) -> list[Finding
     return [
         Finding("unit", "error", f"{a.id} no se cumple: {a.description}")
         for a in assertions
-        if a.must_contain.lower() not in lowered
+        if a.must_contain and a.must_contain.lower() not in lowered
     ]
 
 

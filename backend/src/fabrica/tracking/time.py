@@ -91,3 +91,14 @@ async def hours_by_requirement(session: AsyncSession) -> dict[int, float]:
         if row["requirement_id"] is not None:
             result[row["requirement_id"]] += row["hours"]
     return dict(result)
+
+
+from fabrica.sla.calculator import calculate_business_hours  # noqa: E402
+
+__all__ = [
+    "IDLE_LIMIT",
+    "calculate_business_hours",
+    "heartbeat",
+    "hours_by_requirement",
+    "hours_by_user_and_requirement",
+]

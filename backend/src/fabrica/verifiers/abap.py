@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from fabrica.cleancore import CleanCoreChecker
 from fabrica.sap.adt_xml import OBJECT_PATHS
 from fabrica.sap.bridge import Assertion, CheckResult, PolicyViolation, SapObject
 from fabrica.sap.factory import RequirementSap
@@ -16,27 +17,45 @@ class AbapVerifier:
         *,
         main_object: dict[str, str],
         assertions: list[Assertion],
+        cloud_mode: bool = False,
     ) -> None:
         self.sap = sap
         self.bridge = sap.bridge
         self.main = main_object
         self.assertions = assertions
+        self.cloud_mode = cloud_mode
 
     async def verify(self, output: dict[str, Any]) -> Verification:
         files = [f for f in output.get("files") or [] if str(f.get("content", "")).strip()]
         name = self.main["name"]
         kind = self.main.get("type", "PROG").upper()
+        package = self.main.get("package", "ZFAB")
         if kind not in OBJECT_PATHS:
             return Verification(False, [f"[spec] Tipo de objeto {kind} no soportado por el puente"])
         if not files:
             return Verification(False, ["[formato] La respuesta no contiene código fuente"])
+
+        naming_issues = CleanCoreChecker.validate_naming(kind, name, package)
+        if naming_issues:
+            return Verification(False, [f"[naming] {err}" for err in naming_issues])
+
         source = next(
             (f["content"] for f in files if name.lower() in str(f.get("path", "")).lower()),
             files[0]["content"],
         )
-        obj = SapObject(
-            name=name, type=kind, package=self.main.get("package", "ZFAB"), source=source
-        )
+
+        static_issues: list[str] = []
+        if self.cloud_mode or kind in ("DDLS", "BDEF", "SRVD", "SRVB", "DCLS"):
+            for issue in CleanCoreChecker.check_cloud_source(source):
+                static_issues.append(f"[clean_core] L{issue.line_number}: {issue.message}")
+        else:
+            for issue in CleanCoreChecker.check_classic_source(source):
+                static_issues.append(f"[compliance] L{issue.line_number}: {issue.message}")
+
+        if static_issues:
+            return Verification(False, static_issues)
+
+        obj = SapObject(name=name, type=kind, package=package, source=source)
         try:
             transport = await self.sap.write(obj)
         except PolicyViolation as exc:

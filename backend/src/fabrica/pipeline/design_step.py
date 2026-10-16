@@ -7,6 +7,7 @@ from fabrica.config import get_settings
 from fabrica.db.models import Requirement
 from fabrica.estimation.step import estimate_file, estimate_requirement
 from fabrica.knowledge.standards import standards
+from fabrica.pipeline.fiori_framework import wrap_prototype
 from fabrica.pipeline.step_support import (
     SPEC_JSON,
     StepResult,
@@ -39,8 +40,12 @@ async def run_design(tools: StepTools, req: Requirement) -> StepResult:
         SPEC_JSON: json.dumps(out.output, ensure_ascii=False, indent=2),
         "diseno/estimacion.json": estimate_file(estimate),
     }
+    if out.output.get("assertions"):
+        save_files["diseno/assertions.json"] = json.dumps(
+            out.output["assertions"], ensure_ascii=False, indent=2
+        )
     if out.output.get("prototype_html"):
-        save_files["diseno/prototipo.html"] = out.output["prototype_html"]
+        save_files["diseno/prototipo.html"] = wrap_prototype(out.output["prototype_html"])
     if out.output.get("test_plan_markdown"):
         save_files["diseno/plan_de_pruebas.md"] = out.output["test_plan_markdown"]
     await tools.save(
